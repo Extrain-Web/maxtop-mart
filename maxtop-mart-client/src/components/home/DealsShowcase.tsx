@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useGetProductsQuery } from '@/redux/api/productApi';
 import {
     LuShieldCheck, LuLock, LuCreditCard, LuPackageCheck,
     LuBell, LuChevronRight, LuStar,
@@ -29,17 +30,21 @@ interface Deal {
     href?: string;
 }
 
-const LIGHTNING_DEALS: Deal[] = [
-    { img: 'https://img.kwcdn.com/product/fancy/1e34518b-1de8-40e4-9a3e-b5083b00a1ff.jpg?imageView2/2/w/500/q/70/format/avif', price: '1,840' },
-    { img: 'https://img.kwcdn.com/product/fancy/1e34518b-1de8-40e4-9a3e-b5083b00a1ff.jpg?imageView2/2/w/500/q/70/format/avif', price: '420' },
-    { img: 'https://img.kwcdn.com/product/open/fb4853672c5541e4b48e489fb8fc8a98-goods.jpeg?imageView2/2/w/250/q/10/format/avif', price: '550' },
-];
-
-const UNBEATABLE_DEALS: Deal[] = [
-    { img: 'https://img.kwcdn.com/product/fancy/f1abbd5e-bbdc-4c8f-80de-1de91d0a831d.jpg?imageView2/2/w/500/q/70/format/avif', price: '150', was: '180', rating: 4.5, reviews: 76 },
-    { img: 'https://img.kwcdn.com/product/open/4b3d4d87f6564a85be59a33966bb7b7f-goods.jpeg?imageView2/2/w/500/q/70/format/avif', price: '1,560' },
-    { img: 'https://img.kwcdn.com/product/fancy/41d286fb-50b7-421a-b46a-5239ae7c1494.jpg?imageView2/2/w/500/q/70/format/avif', price: '850', compareAt: '980', rating: 5, reviews: 5 },
-];
+/** Map a real product (API) to the Temu-style Deal card — links to its details page. */
+const toDeal = (p: any): Deal => {
+    const price = Number(p?.price ?? 0);
+    const orig = Number(p?.originalPrice ?? 0);
+    const img = p?.thumbnail || (Array.isArray(p?.images) ? p.images[0] : '') || '';
+    const slugOrId = p?.slug || p?.id || p?._id;
+    return {
+        img,
+        price: price.toLocaleString('en-US'),
+        was: orig > price ? orig.toLocaleString('en-US') : undefined,
+        rating: typeof p?.rating === 'number' && p.rating > 0 ? p.rating : undefined,
+        reviews: typeof p?.reviewCount === 'number' && p.reviewCount > 0 ? p.reviewCount : undefined,
+        href: slugOrId ? `/product/${slugOrId}` : '/products',
+    };
+};
 
 const Stars: React.FC<{ rating: number; reviews?: number }> = ({ rating, reviews }) => (
     <div className="mt-0.5 flex items-center gap-1">
@@ -113,6 +118,13 @@ const DealsShowcase: React.FC = () => {
     }, []);
     const active = WHY_OPTIONS[whyIdx];
 
+    // Real products so each deal card opens its own product details page.
+    // Lightning = biggest discounts, Unbeatable = lowest prices.
+    const { data: dealsData } = useGetProductsQuery({ limit: 3, sort: '-discount' });
+    const { data: unbeatableData } = useGetProductsQuery({ limit: 3, sort: 'price' });
+    const lightningDeals: Deal[] = (dealsData?.data || []).slice(0, 3).map(toDeal);
+    const unbeatableDeals: Deal[] = (unbeatableData?.data || []).slice(0, 3).map(toDeal);
+
     return (
         <section className="container mx-auto px-3 sm:px-4 pt-3 sm:pt-4" aria-label="Deals">
             {/* ── Green trust bar ── */}
@@ -164,8 +176,8 @@ const DealsShowcase: React.FC = () => {
 
             {/* ── Deal columns ── */}
             <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
-                <DealColumn title="Lightning Deals" color={ORANGE} deals={LIGHTNING_DEALS} href="/products?sort=-discount" />
-                <DealColumn title="Unbeatable Deals" color={RED} deals={UNBEATABLE_DEALS} href="/products?sort=price" />
+                <DealColumn title="Lightning Deals" color={ORANGE} deals={lightningDeals} href="/products?sort=-discount" />
+                <DealColumn title="Unbeatable Deals" color={RED} deals={unbeatableDeals} href="/products?sort=price" />
             </div>
         </section>
     );

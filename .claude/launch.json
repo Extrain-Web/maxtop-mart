@@ -1,0 +1,60 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "E:/Work/new-mart/maxtop-mart-server",
+        "run",
+        "start:dev"
+      ],
+      "port": 5000
+    },
+    {
+      "name": "client",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "E:/Work/new-mart/maxtop-mart-client",
+        "run",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "server-alt",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "E:/Work/new-mart/.claude/with-env.cjs",
+        "PORT=5050",
+        "--",
+        "npm",
+        "--prefix",
+        "E:/Work/new-mart/maxtop-mart-server",
+        "run",
+        "start:dev"
+      ],
+      "port": 5050
+    },
+    {
+      "name": "client-alt",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "E:/Work/new-mart/.claude/with-env.cjs",
+        "NEXT_PUBLIC_API_URL=http://localhost:5050/api",
+        "--",
+        "npm",
+        "--prefix",
+        "E:/Work/new-mart/maxtop-mart-client",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "3002"
+      ],
+      "port": 3002
+    }
+  ]
+}

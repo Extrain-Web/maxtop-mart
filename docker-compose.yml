@@ -1,0 +1,76 @@
+services:
+  backend:
+    container_name: p2_project_maxtopmart_backend
+    build:
+      context: ./maxtop-mart-server
+      dockerfile: Dockerfile
+    ports:
+      - "7005:5000"
+    environment:
+      NODE_ENV: production
+      PORT: "5000"
+      DATABASE_URL: ${MONGO_URI:?MONGO_URI must be set as a Portainer stack environment variable}
+      JWT_ACCESS_SECRET: ${JWT_SECRET:?JWT_SECRET must be set as a Portainer stack environment variable}
+      JWT_REFRESH_SECRET: ${JWT_SECRET}
+      CORS_ORIGINS: "https://${CLIENT_DOMAIN:?CLIENT_DOMAIN must be set},http://localhost:3000"
+      # One-time superadmin bootstrap: set these as Portainer stack variables,
+      # redeploy once, sign in, then clear SUPERADMIN_PASSWORD and redeploy again.
+      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-}
+      SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-}
+      SUPERADMIN_NAME: ${SUPERADMIN_NAME:-Super Admin}
+    volumes:
+      - ${DATA_ROOT:-/var/www/p2-demos}/maxtopmart/uploads:/app/uploads
+    restart: always
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ${PROXY_NETWORK:-coolify}
+      traefik.http.routers.maxtopmart-api.rule: "Host(`${API_DOMAIN:?API_DOMAIN must be set}`)"
+      traefik.http.routers.maxtopmart-api.entrypoints: http
+      traefik.http.routers.maxtopmart-api.service: maxtopmart-api
+      traefik.http.services.maxtopmart-api.loadbalancer.server.port: "5000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks: [isolated_net, proxy_net]
+
+  client:
+    container_name: p2_project_maxtopmart_client
+    build:
+      context: ./maxtop-mart-client
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SERVER_URL: "https://${API_DOMAIN}"
+    ports:
+      - "7006:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+    restart: always
+    depends_on: [backend]
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ${PROXY_NETWORK:-coolify}
+      traefik.http.routers.maxtopmart.rule: "Host(`${CLIENT_DOMAIN}`)"
+      traefik.http.routers.maxtopmart.entrypoints: http
+      traefik.http.routers.maxtopmart.service: maxtopmart
+      traefik.http.routers.maxtopmart-www.rule: "Host(`www.${CLIENT_DOMAIN}`)"
+      traefik.http.routers.maxtopmart-www.entrypoints: http
+      traefik.http.routers.maxtopmart-www.service: maxtopmart
+      traefik.http.services.maxtopmart.loadbalancer.server.port: "3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks: [isolated_net, proxy_net]
+
+networks:
+  isolated_net:
+    driver: bridge
+  proxy_net:
+    external: true
+    name: ${PROXY_NETWORK:-coolify}

@@ -42,9 +42,12 @@ services:
       JWT_REFRESH_EXPIRES_IN: '7d'
       BCRYPT_SALT_ROUNDS: '12'
       # Public URLs (used for CORS, email links, payment callbacks).
+      # API_PUBLIC_URL defaults to an auto-resolving sslip.io host that needs
+      # no DNS record. Once the api.maxtopmart.com A record exists, set
+      # API_PUBLIC_URL=https://api.maxtopmart.com in Coolify and redeploy.
       FRONTEND_URL: 'https://maxtopmart.com'
-      BACKEND_URL: 'https://api.maxtopmart.com'
-      PAYMENT_BACKEND_URL: 'https://api.maxtopmart.com'
+      BACKEND_URL: '${API_PUBLIC_URL:-https://maxtopmart-api.169.58.147.232.sslip.io}'
+      PAYMENT_BACKEND_URL: '${API_PUBLIC_URL:-https://maxtopmart-api.169.58.147.232.sslip.io}'
       PAYMENT_FRONTEND_URL: 'https://maxtopmart.com'
     expose:
       - '5000'
@@ -66,8 +69,9 @@ services:
       dockerfile: Dockerfile
       args:
         # Baked into the Next.js build: browser REST base = this + /api, and the
-        # Socket.IO URL is derived from it automatically.
-        NEXT_PUBLIC_SERVER_URL: 'https://api.maxtopmart.com'
+        # Socket.IO URL is derived from it automatically. Defaults to the
+        # no-DNS sslip.io host; override API_PUBLIC_URL in Coolify to switch.
+        NEXT_PUBLIC_SERVER_URL: '${API_PUBLIC_URL:-https://maxtopmart-api.169.58.147.232.sslip.io}'
     restart: unless-stopped
     environment:
       NODE_ENV: production

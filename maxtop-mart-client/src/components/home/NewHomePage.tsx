@@ -14,8 +14,6 @@ import CategoryExpertise from './CategoryExpertise';
 import FlashSale from './FlashSale';
 import DealsRow from './DealsRow';
 import HalloweenDeals from './HalloweenDeals';
-import BestSellers from './BestSellers';
-import CtaBanner from './CtaBanner';
 
 const LIMIT = 20;
 
@@ -131,7 +129,6 @@ const NewHomePage: React.FC = () => {
                     <FlashSale />
                     <DealsRow />
                     <HalloweenDeals />
-                    <BestSellers />
                 </>
             )}
 
@@ -224,8 +221,6 @@ const NewHomePage: React.FC = () => {
                 </div>
             </div>
             )}
-
-            <CtaBanner />
 
         </div>
     );

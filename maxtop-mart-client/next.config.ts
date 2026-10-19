@@ -53,6 +53,15 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "api.maxtopmartbd.com",
       },
+      // Production API (disk-stored uploads served by the backend).
+      {
+        protocol: "https",
+        hostname: "api.maxtopmart.com",
+      },
+      {
+        protocol: "http",
+        hostname: "api.maxtopmart.com",
+      },
     ],
   },
 };

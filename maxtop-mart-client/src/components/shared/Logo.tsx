@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Maxtop Mart brand logo — rendered as the "MAXTOP SHOP" wordmark.
+ * Maxtop Mart brand logo — rendered as the "MAXTOP MART" wordmark.
  */
 interface LogoProps {
     /** Logo height in px (used when `imgClassName` is not set). */
@@ -23,9 +23,9 @@ export const BRAND_NAME = 'Maxtop Mart';
 
 const Logo: React.FC<LogoProps> = ({ size = 40, boxed = false, light = false, className }) => {
     // "MAXTOP" turns white on dark surfaces (header) via `light`; stays brand blue elsewhere.
-    // "SHOP" is always the brand green, which reads on both light and dark backgrounds.
+    // "MART" is always the brand green, which reads on both light and dark backgrounds.
     const maxtopColor = light ? '#FFFFFF' : 'var(--color-primary)';
-    const shopColor = 'var(--color-success)';
+    const martColor = 'var(--color-success)';
 
     return (
         <span
@@ -36,7 +36,7 @@ const Logo: React.FC<LogoProps> = ({ size = 40, boxed = false, light = false, cl
         >
             <span className="font-heading font-extrabold tracking-tight whitespace-nowrap" style={{ fontSize: size ? Math.max(20, size * 0.7) : 28 }}>
                 <span style={{ color: maxtopColor }}>MAXTOP</span>{' '}
-                <span style={{ color: shopColor }}>SHOP</span>
+                <span style={{ color: martColor }}>MART</span>
             </span>
         </span>
     );

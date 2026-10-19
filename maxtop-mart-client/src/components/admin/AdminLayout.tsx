@@ -18,6 +18,8 @@ import { RootState } from '@/redux/store';
 interface AdminLayoutProps { children: React.ReactNode; }
 
 const SIDEBAR_W = 240;
+// Professional deep-slate sidebar (replaces the marketing brand gradient).
+const SIDEBAR_BG = 'linear-gradient(180deg, #0F172A 0%, #111827 100%)';
 
 const menuSections = [
     // Overview — what an admin opens first
@@ -122,7 +124,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 padding: '0 16px', borderBottom: '1px solid rgba(255,255,255,0.12)', flexShrink: 0,
             }}>
                 <Link href="/dashboard/admin" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
-                    <Logo imgClassName="h-[46px]" />
+                    <Logo imgClassName="h-[46px]" light />
                 </Link>
                 <button
                     className="lg:hidden"
@@ -161,12 +163,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                                         style={{
                                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                             padding: '8px 12px', borderRadius: '8px', textDecoration: 'none',
-                                            background: highlighted ? 'rgba(255,255,255,0.18)' : 'transparent',
-                                            color: highlighted ? '#fff' : '#dbe4f5',
+                                            background: highlighted ? 'color-mix(in srgb, var(--color-primary) 30%, transparent)' : 'transparent',
+                                            color: highlighted ? '#ffffff' : '#cbd5e1',
+                                            boxShadow: highlighted ? 'inset 3px 0 0 var(--color-primary)' : 'none',
                                             fontSize: '13px', fontWeight: highlighted ? 600 : 500,
                                             transition: 'all 0.2s ease',
                                         }}
-                                        onMouseEnter={e => { if (!highlighted) { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.1)'; } }}
+                                        onMouseEnter={e => { if (!highlighted) { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'; } }}
                                         onMouseLeave={e => { if (!highlighted) { (e.currentTarget as HTMLElement).style.background = 'transparent'; } }}
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -192,10 +195,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                                                     style={{
                                                         display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', borderRadius: '6px',
                                                         fontSize: '12px', textDecoration: 'none', marginBottom: '1px',
-                                                        background: isActive(sub.href) ? 'rgba(255,255,255,0.16)' : 'transparent',
-                                                        color: isActive(sub.href) ? '#fff' : 'rgba(214,224,244,0.75)',
+                                                        background: isActive(sub.href) ? 'color-mix(in srgb, var(--color-primary) 26%, transparent)' : 'transparent',
+                                                        color: isActive(sub.href) ? '#fff' : 'rgba(203,213,225,0.75)',
                                                         fontWeight: isActive(sub.href) ? 600 : 400,
-                                                        borderLeft: isActive(sub.href) ? '2px solid #fff' : '2px solid transparent',
+                                                        borderLeft: isActive(sub.href) ? '2px solid var(--color-primary)' : '2px solid transparent',
                                                     }}
                                                 >
                                                     {sub.icon && <sub.icon size={14} />}
@@ -244,7 +247,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 className="hidden lg:block"
                 style={{
                     position: 'fixed', top: 0, left: 0, width: `${SIDEBAR_W}px`, height: '100vh',
-                    background: 'var(--gradient-brand)', borderRight: '1px solid rgba(255,255,255,0.12)', zIndex: 50, overflowY: 'hidden',
+                    background: SIDEBAR_BG, borderRight: '1px solid rgba(255,255,255,0.08)', zIndex: 50, overflowY: 'hidden',
                 }}
             >
                 <Sidebar />
@@ -255,7 +258,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 className="lg:hidden"
                 style={{
                     position: 'fixed', top: 0, left: 0, width: '260px', height: '100vh',
-                    background: 'var(--gradient-brand)', borderRight: '1px solid rgba(255,255,255,0.12)', zIndex: 100,
+                    background: SIDEBAR_BG, borderRight: '1px solid rgba(255,255,255,0.08)', zIndex: 100,
                     transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
                     transition: 'transform 0.25s ease',
                     boxShadow: mobileOpen ? '4px 0 20px rgba(0,0,0,0.1)' : 'none',
@@ -326,7 +329,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <div style={{
                                 width: '30px', height: '30px', borderRadius: '50%',
-                                background: 'var(--gradient-brand)',
+                                background: 'var(--color-primary)',
                                 display: 'flex', alignItems: 'center',
                                 justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: '#fff',
                             }}>A</div>

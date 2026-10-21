@@ -147,7 +147,11 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({
                     {item(NEW_IN_HREF, 'New In', <LuSparkles size={18} />)}
 
                     {sectionLabel('Categories')}
-                    {item('/products', 'All Products', <LuLayoutGrid size={18} />)}
+                    {item('/products', 'All Products', <LuLayoutGrid size={18} />, (
+                        <span className="ml-auto text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-[#4a1a7c]">
+                            All
+                        </span>
+                    ))}
                     {categories.map((cat) =>
                         item(
                             `/products?category=${cat._id}`,
@@ -283,13 +287,6 @@ const HeaderInner: React.FC = () => {
         return searchParams.get(key) === val;
     };
 
-    // Mobile category scroller (Temu-style tabs)
-    const allActive = pathname === '/' || (pathname.startsWith('/products') && !searchParams.get('category') && !searchParams.get('q'));
-    const mobileCatClass = (active: boolean) =>
-        `shrink-0 whitespace-nowrap border-b-2 pb-1.5 text-[14px] transition-colors ${
-            active ? 'border-white font-bold text-white' : 'border-transparent font-medium text-white/80 hover:text-white'
-        }`;
-
     return (
         <header
             className="sticky top-0 z-50 transition-shadow duration-300"
@@ -341,13 +338,53 @@ const HeaderInner: React.FC = () => {
 
                 {/* ========== MOBILE (<lg) ========== */}
                 <div className="lg:hidden">
-                    {/* Row 1: logo + inline search + icons */}
-                    <div className="container mx-auto px-3 flex h-[54px] items-center gap-2">
-                        <Link href="/" className="shrink-0 flex items-center" aria-label="Home" onClick={() => setSearchQuery('')}>
-                            <Logo light size={24} />
-                        </Link>
+                    {/* Row 1: Left (Menu + Logo), Right (User + Cart) */}
+                    <div className="container mx-auto px-3 flex h-[52px] items-center justify-between gap-3">
+                        {/* Left: Sidebar Toggle + Brand Logo */}
+                        <div className="flex items-center gap-2 min-w-0">
+                            <button
+                                type="button"
+                                onClick={() => setMobileOpen(true)}
+                                className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg text-white transition-colors hover:bg-white/10 active:bg-white/20"
+                                aria-label="Open sidebar menu"
+                            >
+                                <LuMenu size={23} strokeWidth={2} />
+                            </button>
 
-                        <div className="flex-1 min-w-0" style={{ '--color-primary': SEARCH_PRIMARY } as React.CSSProperties}>
+                            <Link
+                                href="/"
+                                className="shrink-0 flex items-center"
+                                aria-label="Home"
+                                onClick={() => setSearchQuery('')}
+                            >
+                                <Logo light size={24} imgClassName="h-[36px]" />
+                            </Link>
+                        </div>
+
+                        {/* Right: Account & Cart */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <Link
+                                href={isAuthenticated ? dashboardHref : '/login'}
+                                className="flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10"
+                                aria-label="Account"
+                            >
+                                <LuUser size={21} strokeWidth={1.9} />
+                            </Link>
+
+                            <Link
+                                href="/cart"
+                                className="relative flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10"
+                                aria-label={`Cart, ${cartCount} items`}
+                            >
+                                <LuShoppingCart size={21} strokeWidth={1.9} />
+                                <CountBadge count={cartCount} />
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Row 2: Full-width inline search */}
+                    <div className="container mx-auto px-3 pb-2.5 pt-0.5">
+                        <div className="w-full" style={{ '--color-primary': SEARCH_PRIMARY } as React.CSSProperties}>
                             <SearchAutocomplete
                                 variant="mobile"
                                 value={searchQuery}
@@ -355,51 +392,6 @@ const HeaderInner: React.FC = () => {
                                 onSubmit={handleSearch}
                             />
                         </div>
-
-                        <button
-                            type="button"
-                            onClick={() => setMobileOpen(true)}
-                            className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10"
-                            aria-label="Open menu"
-                        >
-                            <LuMenu size={22} strokeWidth={1.9} />
-                        </button>
-
-                        <Link
-                            href={isAuthenticated ? dashboardHref : '/login'}
-                            className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10"
-                            aria-label="Account"
-                        >
-                            <LuUser size={21} strokeWidth={1.9} />
-                        </Link>
-
-                        <Link
-                            href="/cart"
-                            className="relative shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10"
-                            aria-label={`Cart, ${cartCount} items`}
-                        >
-                            <LuShoppingCart size={21} strokeWidth={1.9} />
-                            <CountBadge count={cartCount} />
-                        </Link>
-                    </div>
-
-                    {/* Row 2: horizontal category tabs */}
-                    <div className="container mx-auto">
-                        <nav
-                            className="flex items-center gap-5 overflow-x-auto px-3 pt-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                            aria-label="Categories"
-                        >
-                            <Link href="/products" className={mobileCatClass(allActive)}>All</Link>
-                            {categories.map((cat) => (
-                                <Link
-                                    key={cat._id}
-                                    href={`/products?category=${cat._id}`}
-                                    className={mobileCatClass(searchParams.get('category') === cat._id)}
-                                >
-                                    {cat.name}
-                                </Link>
-                            ))}
-                        </nav>
                     </div>
                 </div>
 

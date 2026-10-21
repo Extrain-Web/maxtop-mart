@@ -29,8 +29,29 @@ const ROLE_META: Record<string, { label: string; color: string }> = {
     user: { label: 'User', color: 'text-gray-600 bg-gray-100' },
 };
 
+const PERM_DETAILS: Record<string, { label: string; desc: string }> = {
+    view_analytics: { label: 'Report & Analysis', desc: 'View store sales, revenue charts & performance' },
+    manage_orders: { label: 'Orders Management', desc: 'Process, fulfill, confirm, and update order statuses' },
+    manage_courier: { label: 'Courier & Shipments', desc: 'Assign couriers, print labels, track parcels' },
+    manage_shipping: { label: 'Delivery Zones & Rates', desc: 'Configure shipping costs and city delivery areas' },
+    manage_returns: { label: 'Returns & Refunds', desc: 'Handle customer return tickets and refund approvals' },
+    manage_categories: { label: 'Categories Management', desc: 'Create, edit, organize categories and sub-categories' },
+    manage_products: { label: 'Products & Inventory', desc: 'Add new products, edit catalog, update stock and variants' },
+    manage_expenses: { label: 'Expenses & Staff Salary', desc: 'Staff monthly salary payouts, marketing costs, expense tracking' },
+    manage_coupons: { label: 'Discount Coupons', desc: 'Create promotional voucher codes and rules' },
+    manage_offers: { label: 'Offers & Flash Sales', desc: 'Manage flash sale banners and seasonal discount campaigns' },
+    manage_reviews: { label: 'Customer Reviews', desc: 'Moderate, approve, or hide customer product reviews' },
+    manage_newsletter: { label: 'Newsletter Subscribers', desc: 'View subscribed email addresses and export lists' },
+    manage_payments: { label: 'Payments & Transactions', desc: 'Inspect gateway transactions, verify manual payments' },
+    manage_users: { label: 'Customers & Staff', desc: 'View customer accounts, block/unblock, edit profile' },
+    manage_roles: { label: 'Roles & Permissions', desc: 'Manage role assignments (Super Admin only)' },
+    manage_site_content: { label: 'Site Content & Banners', desc: 'Edit homepage hero sliders, banners, promotional texts' },
+    manage_settings: { label: 'System Settings', desc: 'Store information, contacts, currency and general options' },
+};
+
 // Turn "manage_products" → "Manage Products" for the checkbox grid labels.
 const prettyPerm = (perm: string) =>
+    PERM_DETAILS[perm]?.label ||
     perm
         .split('_')
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
@@ -117,12 +138,36 @@ const RoleModal = ({
                     </div>
 
                     {/* Permissions grid */}
-                    <div className="space-y-2 border-t border-gray-100 pt-4">
-                        <div className="flex justify-between items-center">
-                            <label className="text-xs font-bold text-gray-500 uppercase">Permissions</label>
-                            <span className="text-[10px] font-bold text-[var(--color-primary)] bg-primary-lightest px-2 py-0.5 rounded-full">
-                                {role === 'superadmin' ? 'All (Super Admin)' : `${selectedPerms.length} Selected`}
-                            </span>
+                    <div className="space-y-3 border-t border-gray-100 pt-4">
+                        <div className="flex flex-wrap justify-between items-center gap-2">
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Sidebar Options &amp; Permissions</label>
+                                <p className="text-[11px] text-gray-400">Choose which sidebar options this staff member can see and manage</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {role !== 'superadmin' && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedPerms([...permissions])}
+                                            className="text-[11px] text-blue-600 hover:text-blue-700 font-semibold cursor-pointer"
+                                        >
+                                            Select All
+                                        </button>
+                                        <span className="text-gray-300">|</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedPerms([])}
+                                            className="text-[11px] text-gray-500 hover:text-gray-700 font-semibold cursor-pointer"
+                                        >
+                                            Clear All
+                                        </button>
+                                    </>
+                                )}
+                                <span className="text-[10px] font-bold text-[var(--color-primary)] bg-primary-lightest px-2.5 py-1 rounded-full">
+                                    {role === 'superadmin' ? 'All (Super Admin)' : `${selectedPerms.length} Selected`}
+                                </span>
+                            </div>
                         </div>
                         {role === 'superadmin' ? (
                             <div className="flex items-start gap-2 p-3 rounded-md bg-purple-50 text-purple-700 text-xs font-medium">
@@ -132,25 +177,33 @@ const RoleModal = ({
                         ) : isLoadingPermissions ? (
                             <p className="text-[11px] text-gray-400 animate-pulse">Loading permissions...</p>
                         ) : (
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto p-1 custom-scrollbar">
                                 {permissions.map((perm) => {
                                     const checked = selectedPerms.includes(perm);
+                                    const details = PERM_DETAILS[perm];
                                     return (
                                         <label
                                             key={perm}
-                                            className={`flex items-center gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors ${checked
-                                                ? 'bg-primary-lightest border-[var(--color-primary)]'
-                                                : 'bg-gray-50/40 border-gray-100 hover:bg-white hover:border-gray-200'}`}
+                                            className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all ${checked
+                                                ? 'bg-primary-lightest/40 border-[var(--color-primary)] shadow-sm'
+                                                : 'bg-gray-50/50 border-gray-100 hover:bg-white hover:border-gray-200'}`}
                                         >
                                             <input
                                                 type="checkbox"
                                                 checked={checked}
                                                 onChange={() => togglePerm(perm)}
-                                                className="w-4 h-4 text-[var(--color-primary)] border-gray-300 rounded focus:ring-0"
+                                                className="w-4 h-4 mt-0.5 text-[var(--color-primary)] border-gray-300 rounded focus:ring-0"
                                             />
-                                            <span className={`text-xs font-medium ${checked ? 'text-[var(--color-primary)]' : 'text-gray-700'}`}>
-                                                {prettyPerm(perm)}
-                                            </span>
+                                            <div className="flex-1 min-w-0">
+                                                <span className={`text-xs font-semibold block leading-tight ${checked ? 'text-[var(--color-primary)]' : 'text-gray-800'}`}>
+                                                    {prettyPerm(perm)}
+                                                </span>
+                                                {details?.desc && (
+                                                    <span className="text-[10px] text-gray-400 block mt-0.5 line-clamp-1">
+                                                        {details.desc}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </label>
                                     );
                                 })}

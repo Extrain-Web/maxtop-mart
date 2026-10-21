@@ -109,8 +109,8 @@ const AdminDashboard: React.FC = () => {
                 </button>
             </div>
 
-            {/* ── Financial hero row: live Revenue / Net Profit / Avg Order Value ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            {/* ── Financial hero row: live Revenue / Net Profit / Expenses / Avg Order Value ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                 {[
                     {
                         label: 'Total Revenue',
@@ -125,6 +125,13 @@ const AdminDashboard: React.FC = () => {
                         sub: `Margin ${Math.round((stats?.profitMargin || 0) * 100)}% · after cost of goods`,
                         icon: LuWallet,
                         fg: 'var(--color-primary)', from: 'var(--color-primary-lightest)', to: 'var(--color-primary-border)',
+                    },
+                    {
+                        label: 'Total Expenses',
+                        value: formatCurrency(stats?.totalExpenses || 0),
+                        sub: `Staff: ${formatCurrency(stats?.staffExpenses || 0)} · Mkt: ${formatCurrency(stats?.marketingExpenses || 0)}`,
+                        icon: LuBanknote,
+                        fg: '#E11D48', from: '#FFF1F2', to: '#FFE4E6',
                     },
                     {
                         label: 'Avg Order Value',
@@ -496,11 +503,11 @@ const AdminDashboard: React.FC = () => {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                             {[
                                 { label: 'Add Product', href: '/dashboard/admin/products/new', icon: LuPlus, color: 'var(--color-primary)', bg: 'var(--color-primary-lightest)' },
+                                { label: 'Expenses', href: '/dashboard/admin/expenses', icon: LuWallet, color: '#E11D48', bg: '#FFF1F2' },
                                 { label: 'All Orders', href: '/dashboard/admin/orders', icon: LuShoppingCart, color: '#3B82F6', bg: '#EFF6FF' },
                                 { label: 'Shipping', href: '/dashboard/admin/shipping', icon: LuTruck, color: '#F59E0B', bg: '#FFFBEB' },
                                 { label: 'Reports', href: '/dashboard/admin/analytics', icon: LuTrendingUp, color: '#8B5CF6', bg: '#F5F3FF' },
                                 { label: 'Coupons', href: '/dashboard/admin/coupons', icon: LuTag, color: '#EC4899', bg: '#FDF2F8' },
-                                { label: 'Reviews', href: '/dashboard/admin/reviews', icon: LuStar, color: '#06B6D4', bg: '#ECFEFF' },
                             ].map((item, i) => (
                                 <Link key={i} href={item.href} style={{
                                     display: 'flex', alignItems: 'center', gap: '8px',

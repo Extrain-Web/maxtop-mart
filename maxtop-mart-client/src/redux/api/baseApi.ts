@@ -41,6 +41,6 @@ export const baseApi = createApi({
     // it, so moving between admin routes (and back) shows data instantly from
     // cache instead of re-showing a loading state on every navigation.
     keepUnusedDataFor: 300,
-    tagTypes: ['Stats', 'Orders', 'Products', 'Users', 'Analytics', 'PageContent', 'SiteContent', 'Categories', 'Payments', 'Shipping', 'Coupons', 'Reviews', 'Offers', 'Roles', 'Invoices', 'Returns', 'Notifications', 'Newsletter', 'FeaturedCategories'],
+    tagTypes: ['Stats', 'Orders', 'Products', 'Users', 'Analytics', 'PageContent', 'SiteContent', 'Categories', 'Payments', 'Shipping', 'Coupons', 'Reviews', 'Offers', 'Roles', 'Invoices', 'Returns', 'Notifications', 'Newsletter', 'FeaturedCategories', 'Expenses'],
     endpoints: () => ({}),
 });

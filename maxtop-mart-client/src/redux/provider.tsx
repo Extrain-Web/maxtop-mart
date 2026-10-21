@@ -47,6 +47,7 @@ const restoreSession = async () => {
                 phone: u.phone || '',
                 role: u.role || 'user',
                 avatar: u.avatar || '',
+                permissions: u.permissions || [],
             },
             token,
         }));

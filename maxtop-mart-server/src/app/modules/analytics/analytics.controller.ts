@@ -7,6 +7,7 @@ import { User } from '../user/user.model';
 import { Category } from '../category/category.model';
 import AnalyticsService from './analytics.service';
 import { computeFinanceSummary } from '../finance/finance.service';
+import ExpenseService from '../expense/expense.service';
 
 const AnalyticsController = {
     // GET /analytics/dashboard — Main dashboard summary
@@ -32,10 +33,11 @@ const AnalyticsController = {
 
         const todayOrders = await Order.countDocuments({ createdAt: { $gte: todayStart } });
 
-        // Single source of truth for money: revenue, COGS, net profit, margin, AOV.
-        const [allTime, today] = await Promise.all([
+        // Single source of truth for money: revenue, COGS, net profit, margin, AOV, expenses.
+        const [allTime, today, expenseSummary] = await Promise.all([
             computeFinanceSummary(),
             computeFinanceSummary(todayStart),
+            ExpenseService.getSummary().catch(() => ({ totalExpense: 0, staffExpenses: 0, marketingExpenses: 0 })),
         ]);
 
         sendResponse(res, {
@@ -58,6 +60,9 @@ const AnalyticsController = {
                 todayOrders,
                 todayRevenue: today.revenue,
                 todayNetProfit: today.netProfit,
+                totalExpenses: expenseSummary.totalExpense || 0,
+                staffExpenses: expenseSummary.staffExpenses || 0,
+                marketingExpenses: expenseSummary.marketingExpenses || 0,
             },
         });
     }),

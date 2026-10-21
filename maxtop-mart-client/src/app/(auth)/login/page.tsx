@@ -48,6 +48,7 @@ const LoginPageInner = () => {
                 phone: apiUser.phone || '',
                 role: apiUser.role || 'user',
                 avatar: apiUser.avatar || '',
+                permissions: apiUser.permissions || [],
             };
 
             dispatch(loginSuccess({ user, token }));

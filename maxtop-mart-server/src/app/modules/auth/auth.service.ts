@@ -92,7 +92,7 @@ const AuthService = {
         const tokens = this.generateTokens(jwtPayload);
 
         return {
-            user: { _id: user._id!.toString(), email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role, avatar: user.avatar },
+            user: { _id: user._id!.toString(), email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role, avatar: user.avatar, permissions: user.permissions || [] },
             tokens,
         };
     },
@@ -185,7 +185,7 @@ const AuthService = {
         const tokens = this.generateTokens(jwtPayload);
 
         return {
-            user: { _id: user._id!.toString(), email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role, avatar: user.avatar },
+            user: { _id: user._id!.toString(), email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role, avatar: user.avatar, permissions: user.permissions || [] },
             tokens,
         };
     },
@@ -294,7 +294,7 @@ const AuthService = {
         const tokens = this.generateTokens(jwtPayload);
 
         return {
-            user: { _id: user._id!.toString(), email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role, avatar: user.avatar },
+            user: { _id: user._id!.toString(), email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role, avatar: user.avatar, permissions: user.permissions || [] },
             tokens,
         };
     },
@@ -389,6 +389,7 @@ const AuthService = {
                 lastName: user.lastName,
                 role: user.role,
                 avatar: user.avatar,
+                permissions: user.permissions || [],
             },
             tokens: { accessToken },
         };

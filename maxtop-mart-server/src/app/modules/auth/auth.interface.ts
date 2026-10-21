@@ -19,6 +19,7 @@ export interface IAuthResponse {
         lastName: string;
         role: string;
         avatar: string;
+        permissions?: string[];
     };
     tokens: ITokens;
 }

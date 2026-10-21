@@ -7,6 +7,7 @@ export interface User {
     phone?: string;
     avatar?: string;
     role: 'user' | 'admin' | 'superadmin';
+    permissions?: string[];
     address?: {
         street: string;
         city: string;

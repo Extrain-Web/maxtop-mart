@@ -9,6 +9,7 @@ import {
     LuShoppingCart, LuUser, LuChevronLeft,
     LuLayoutDashboard, LuChartColumn, LuTruck, LuTag, LuStar, LuMapPin, LuSparkles,
     LuSettings, LuBell, LuSearch, LuCreditCard, LuZap, LuShield, LuRefreshCw, LuMail, LuList, LuCirclePlus,
+    LuWallet, LuBanknote, LuMegaphone,
 } from 'react-icons/lu';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import Logo from '@/components/shared/Logo';
@@ -17,64 +18,91 @@ import { RootState } from '@/redux/store';
 
 interface AdminLayoutProps { children: React.ReactNode; }
 
+interface SubMenuItem {
+    name: string;
+    href: string;
+    icon?: any;
+}
+
+interface MenuItem {
+    name: string;
+    href: string;
+    icon: any;
+    submenu?: SubMenuItem[] | null;
+    permission?: string;
+    superadminOnly?: boolean;
+}
+
+interface MenuSection {
+    label: string;
+    items: MenuItem[];
+}
+
 const SIDEBAR_W = 240;
 // Professional deep-slate sidebar (replaces the marketing brand gradient).
 const SIDEBAR_BG = 'linear-gradient(180deg, #0F172A 0%, #111827 100%)';
 
-const menuSections = [
+const menuSections: MenuSection[] = [
     // Overview — what an admin opens first
     {
         label: 'Main',
         items: [
             { name: 'Dashboard', href: '/dashboard/admin', icon: LuHouse, submenu: null },
-            { name: 'Report & Analysis', href: '/dashboard/admin/analytics', icon: LuChartColumn, submenu: null },
+            { name: 'Report & Analysis', href: '/dashboard/admin/analytics', icon: LuChartColumn, submenu: null, permission: 'view_analytics' },
         ],
     },
     // Daily operations — follows the order lifecycle: placed → shipped → returned
     {
         label: 'Orders & Fulfillment',
         items: [
-            { name: 'Orders', href: '/dashboard/admin/orders', icon: LuShoppingCart, submenu: null },
-            { name: 'Courier / Shipments', href: '/dashboard/admin/courier', icon: LuTruck, submenu: null },
-            { name: 'Delivery Zones', href: '/dashboard/admin/shipping', icon: LuMapPin, submenu: null },
-            { name: 'Returns & Refunds', href: '/dashboard/admin/returns', icon: LuRefreshCw, submenu: null },
+            { name: 'Orders', href: '/dashboard/admin/orders', icon: LuShoppingCart, submenu: null, permission: 'manage_orders' },
+            { name: 'Courier / Shipments', href: '/dashboard/admin/courier', icon: LuTruck, submenu: null, permission: 'manage_courier' },
+            { name: 'Delivery Zones', href: '/dashboard/admin/shipping', icon: LuMapPin, submenu: null, permission: 'manage_shipping' },
+            { name: 'Returns & Refunds', href: '/dashboard/admin/returns', icon: LuRefreshCw, submenu: null, permission: 'manage_returns' },
         ],
     },
     // What you sell
     {
         label: 'Catalog',
         items: [
-            { name: 'Categories', href: '/dashboard/admin/categories', icon: LuLayoutGrid, submenu: null },
+            { name: 'Categories', href: '/dashboard/admin/categories', icon: LuLayoutGrid, submenu: null, permission: 'manage_categories' },
             {
-                name: 'Products', href: '/dashboard/admin/products', icon: LuShoppingBag, submenu: [
+                name: 'Products', href: '/dashboard/admin/products', icon: LuShoppingBag, permission: 'manage_products', submenu: [
                     { name: 'All Products', href: '/dashboard/admin/products', icon: LuList },
                     { name: 'Add Product', href: '/dashboard/admin/products/new', icon: LuCirclePlus },
                 ]
             },
         ],
     },
+    // Expenses & Finance
+    {
+        label: 'Expenses & Finance',
+        items: [
+            {
+                name: 'Expenses', href: '/dashboard/admin/expenses', icon: LuWallet, permission: 'manage_expenses', submenu: [
+                    { name: 'All Expenses', href: '/dashboard/admin/expenses', icon: LuList },
+                    { name: 'Staffs Expense', href: '/dashboard/admin/expenses?tab=staff', icon: LuUsers },
+                    { name: 'Marketing Expense', href: '/dashboard/admin/expenses?tab=marketing', icon: LuMegaphone },
+                ]
+            },
+            { name: 'Payments', href: '/dashboard/admin/payments', icon: LuCreditCard, submenu: null, permission: 'manage_payments' },
+        ],
+    },
     // Promotions & engagement
     {
         label: 'Marketing',
         items: [
-            { name: 'Coupons', href: '/dashboard/admin/coupons', icon: LuTag, submenu: null },
-            { name: 'Offers & Flash Sales', href: '/dashboard/admin/offers', icon: LuZap, submenu: null },
-            { name: 'Reviews', href: '/dashboard/admin/reviews', icon: LuStar, submenu: null },
-            { name: 'Newsletter', href: '/dashboard/admin/newsletter', icon: LuMail, submenu: null },
-        ],
-    },
-    // Money flow — payments collected from customers
-    {
-        label: 'Finance',
-        items: [
-            { name: 'Payments', href: '/dashboard/admin/payments', icon: LuCreditCard, submenu: null },
+            { name: 'Coupons', href: '/dashboard/admin/coupons', icon: LuTag, submenu: null, permission: 'manage_coupons' },
+            { name: 'Offers & Flash Sales', href: '/dashboard/admin/offers', icon: LuZap, submenu: null, permission: 'manage_offers' },
+            { name: 'Reviews', href: '/dashboard/admin/reviews', icon: LuStar, submenu: null, permission: 'manage_reviews' },
+            { name: 'Newsletter', href: '/dashboard/admin/newsletter', icon: LuMail, submenu: null, permission: 'manage_newsletter' },
         ],
     },
     // People & access control
     {
         label: 'Users & Access',
         items: [
-            { name: 'Users & Admins', href: '/dashboard/admin/customers', icon: LuUsers, submenu: null },
+            { name: 'Users & Admins', href: '/dashboard/admin/customers', icon: LuUsers, submenu: null, permission: 'manage_users' },
             { name: 'Roles & Permissions', href: '/dashboard/admin/roles', icon: LuShield, submenu: null, superadminOnly: true },
         ],
     },
@@ -82,9 +110,8 @@ const menuSections = [
     {
         label: 'Support & System',
         items: [
-
-            { name: 'Site Content', href: '/dashboard/admin/site-content', icon: LuLayoutDashboard, submenu: null },
-            { name: 'Settings', href: '/dashboard/admin/settings', icon: LuSettings, submenu: null },
+            { name: 'Site Content', href: '/dashboard/admin/site-content', icon: LuLayoutDashboard, submenu: null, permission: 'manage_site_content' },
+            { name: 'Settings', href: '/dashboard/admin/settings', icon: LuSettings, submenu: null, permission: 'manage_settings' },
             { name: 'Profile', href: '/dashboard/admin/profile', icon: LuUser, submenu: null },
         ],
     },
@@ -98,7 +125,16 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
     const pathname = usePathname();
     const router = useRouter();
-    const role = useSelector((s: RootState) => s.auth.user?.role);
+    const user = useSelector((s: RootState) => s.auth.user);
+    const role = user?.role;
+    const userPermissions = (user as any)?.permissions || [];
+
+    const canAccessItem = (item: any) => {
+        if (role === 'superadmin') return true;
+        if (item.superadminOnly) return false;
+        if (!item.permission) return true;
+        return Array.isArray(userPermissions) && userPermissions.includes(item.permission);
+    };
 
     useEffect(() => { setMobileOpen(false); }, [pathname]);
 
@@ -137,16 +173,20 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
             {/* Nav */}
             <nav className="scrollbar-hide" style={{ flex: 1, overflowY: 'auto', padding: '12px 10px' }}>
-                {menuSections.map((section) => (
-                    <div key={section.label} style={{ marginBottom: '16px' }}>
-                        <p style={{
-                            fontSize: '9px', fontWeight: 700, color: '#94A3B8',
-                            textTransform: 'uppercase', letterSpacing: '1.2px',
-                            padding: '0 10px 6px', margin: 0,
-                        }}>
-                            {section.label}
-                        </p>
-                        {section.items.filter((item: any) => !item.superadminOnly || role === 'superadmin').map((item) => {
+                {menuSections.map((section) => {
+                    const visibleItems = section.items.filter(canAccessItem);
+                    if (visibleItems.length === 0) return null;
+
+                    return (
+                        <div key={section.label} style={{ marginBottom: '16px' }}>
+                            <p style={{
+                                fontSize: '9px', fontWeight: 700, color: '#94A3B8',
+                                textTransform: 'uppercase', letterSpacing: '1.2px',
+                                padding: '0 10px 6px', margin: 0,
+                            }}>
+                                {section.label}
+                            </p>
+                            {visibleItems.map((item) => {
                             const hasSubmenu = !!(item.submenu && item.submenu.length > 0);
                             const isExpanded = expandedMenu === item.name;
                             const parentActive = isParentActive(item);
@@ -211,7 +251,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                             );
                         })}
                     </div>
-                ))}
+                    );
+                })}
             </nav>
 
             {/* Footer */}

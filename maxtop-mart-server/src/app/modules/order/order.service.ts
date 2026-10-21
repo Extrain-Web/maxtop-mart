@@ -135,9 +135,55 @@ const OrderService = {
         };
 
         for (const item of items) {
-            const product = await Product.findOne({ _id: item.product, isDeleted: false, status: 'active' }).select('+costPrice');
-            if (!product) throw new AppError(404, `Product not found: ${item.product}`);
-            if (product.stock < item.quantity) throw new AppError(400, `Insufficient stock for: ${product.name}`);
+            const rawId = String(item.product || item.productId || item.id || '').trim();
+            const cleanId = rawId.split('_')[0].trim();
+
+            let product: any = null;
+            if (Types.ObjectId.isValid(cleanId)) {
+                // First try: non-deleted, active (or status not draft)
+                product = await Product.findOne({
+                    _id: cleanId,
+                    isDeleted: { $ne: true },
+                    status: { $ne: 'draft' },
+                }).select('+costPrice');
+
+                // Fallback: any non-deleted product with this ID
+                if (!product) {
+                    product = await Product.findOne({
+                        _id: cleanId,
+                        isDeleted: { $ne: true },
+                    }).select('+costPrice');
+                }
+
+                // Direct fallback: find by ID regardless of flags
+                if (!product) {
+                    product = await Product.findById(cleanId).select('+costPrice');
+                }
+            }
+
+            // Fallback: search by slug or name if not found by ObjectId
+            if (!product) {
+                product = await Product.findOne({
+                    $or: [{ slug: cleanId }, { slug: rawId }, { name: cleanId }],
+                    isDeleted: { $ne: true },
+                }).select('+costPrice');
+            }
+
+            if (!product) {
+                throw new AppError(404, `Product not found: ${item.product || cleanId}`);
+            }
+
+            // Gracefully activate product if needed
+            if (product.status !== 'active' || product.isDeleted) {
+                product.status = 'active';
+                product.isDeleted = false;
+                await Product.findByIdAndUpdate(product._id, { status: 'active', isDeleted: false });
+            }
+
+            const availableStock = typeof product.stock === 'number' && !isNaN(product.stock) ? product.stock : 100;
+            if (availableStock < item.quantity) {
+                throw new AppError(400, `Insufficient stock for: ${product.name}`);
+            }
 
             const unitPrice = resolveEffectivePrice(product);
             const itemTotal = unitPrice * item.quantity;

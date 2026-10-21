@@ -4,6 +4,7 @@ import config from './app/config';
 import { initSocket } from './app/utils/socket';
 import { startCourierAutoSync } from './app/modules/courier/courier.cron';
 import { ensureSuperadmin } from './app/utils/ensureSuperadmin';
+import { ensureDataIntegrity } from './app/utils/ensureDataIntegrity';
 
 process.on('uncaughtException', (error) => {
     console.error('💥 UNCAUGHT EXCEPTION! Shutting down...');
@@ -56,7 +57,10 @@ export async function connectDB(): Promise<typeof mongoose> {
 
 // ── Connect immediately ───────────────────────────────────────────
 connectDB()
-    .then(() => ensureSuperadmin())
+    .then(async () => {
+        await ensureSuperadmin();
+        await ensureDataIntegrity();
+    })
     .catch((err) => console.error('❌ Initial MongoDB connection failed:', err));
 
 // ── Start Server ─────────────────────────────────────────────────

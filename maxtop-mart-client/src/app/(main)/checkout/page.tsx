@@ -315,7 +315,7 @@ const CheckoutPage = () => {
 
         const orderPayload = {
             items: items.map(item => ({
-                product: item.productId || item.id,
+                product: String(item.productId || item.id || '').split('_')[0].trim(),
                 quantity: item.quantity,
                 color: item.color || undefined,
                 size: item.size || undefined,

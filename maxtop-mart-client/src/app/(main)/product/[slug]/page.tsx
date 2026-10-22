@@ -1,17 +1,17 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import SmartImage from '@/components/shared/SmartImage';
+import SmartImage, { resolveImageUrl } from '@/components/shared/SmartImage';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
     LuHeart, LuShoppingCart, LuMinus, LuPlus, LuCircleCheck,
     LuStar, LuX, LuZoomIn, LuCopy, LuShare2, LuDownload,
     LuChevronUp, LuChevronDown, LuMessageSquare,
-    LuEye, LuChevronRight, LuChevronLeft, LuSend,
-    LuMapPin, LuTruck, LuDollarSign, LuRefreshCw, LuShield, LuClock, LuShoppingBag
+    LuChevronRight, LuChevronLeft, LuSend,
+    LuMapPin, LuTruck, LuRefreshCw, LuShield, LuClock, LuShoppingBag,
+    LuScale, LuCamera, LuInfo, LuCheck
 } from 'react-icons/lu';
-import { resolveImageUrl } from '@/components/shared/SmartImage';
 import { useGetProductBySlugQuery, useGetRelatedProductsQuery, useIncrementProductStatMutation } from '@/redux/api/productApi';
 import { useGetSiteContentQuery } from '@/redux/api/siteContentApi';
 import { useGetProductReviewsQuery, useCreateReviewMutation } from '@/redux/api/reviewApi';
@@ -20,7 +20,7 @@ import { addToCart } from '@/redux/slices/cartSlice';
 import { useCreateInquiryMutation } from '@/redux/api/inquiryApi';
 import { useWishlist } from '@/hooks/useWishlist';
 import { toast } from 'react-hot-toast';
-import NewProductCard, { CommentsPopup } from '@/components/shared/NewProductCard';
+import { CommentsPopup } from '@/components/shared/NewProductCard';
 import { getDisplayPrice } from '@/utils/offerPrice';
 import {
     FaFacebookF, FaFacebookMessenger, FaWhatsapp, FaTelegramPlane,
@@ -32,7 +32,7 @@ export default function ProductDetailsPage() {
     const { slug } = useParams();
     const router = useRouter();
     const dispatch = useAppDispatch();
-    const { isAuthenticated } = useAppSelector((state: any) => state.auth);
+    const { isAuthenticated, user } = useAppSelector((state: any) => state.auth);
     const [createInquiry] = useCreateInquiryMutation();
     const [incrementStat] = useIncrementProductStatMutation();
     const [quantity, setQuantity] = useState(1);
@@ -40,8 +40,8 @@ export default function ProductDetailsPage() {
     const { isInWishlist, toggle: toggleWishlistItem } = useWishlist();
     const [addedToCart, setAddedToCart] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [linkCopied, setLinkCopied] = useState(false);
-    const [isLiked, setIsLiked] = useState(false);
+    const [promoCopied, setPromoCopied] = useState(false);
+    const [skuCopied, setSkuCopied] = useState(false);
     const [selectedColor, setSelectedColor] = useState<string>('');
     const [selectedSize, setSelectedSize] = useState<string>('');
     const [activeBottomTab, setActiveBottomTab] = useState<'description' | 'reviews'>('description');
@@ -69,7 +69,9 @@ export default function ProductDetailsPage() {
     const [inquiryMessage, setInquiryMessage] = useState('');
     const [inquirySubmitting, setInquirySubmitting] = useState(false);
     const [inquirySuccess, setInquirySuccess] = useState(false);
-    const colorSwatchRef = useRef<HTMLDivElement>(null);
+
+    const thumbStripRef = useRef<HTMLDivElement>(null);
+    const relatedScrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'instant' });
@@ -82,10 +84,6 @@ export default function ProductDetailsPage() {
         return () => { document.body.style.overflow = ''; };
     }, [anyModalOpen]);
 
-    const scrollList = (ref: React.RefObject<HTMLDivElement | null>, dir: 'up' | 'down') => {
-        if (ref.current) ref.current.scrollBy({ left: dir === 'down' ? 140 : -140, behavior: 'smooth' });
-    };
-
     const { data: productData, isLoading, isError } = useGetProductBySlugQuery(slug as string, { skip: !slug });
     const product = productData?.data;
     const isWishlisted = product ? isInWishlist(product._id || product.id) : false;
@@ -96,10 +94,8 @@ export default function ProductDetailsPage() {
     );
     const relatedProducts = relatedData?.data || [];
 
-    // Ship-from location for the delivery box — from site-content, so editing it in
-    // Settings updates it here too (it used to be a hardcoded address string).
     const { data: siteContentRes } = useGetSiteContentQuery(undefined);
-    const shipsFrom: string = siteContentRes?.data?.contact?.address || '';
+    const shipsFrom: string = siteContentRes?.data?.contact?.address || 'Dhaka, Bangladesh';
 
     const { data: reviewsData } = useGetProductReviewsQuery({ productId: product?._id }, { skip: !product?._id });
     const reviews = reviewsData?.data || [];
@@ -115,51 +111,27 @@ export default function ProductDetailsPage() {
     };
     const isInCart = product ? cartItems.some((item: any) => item.id === getCartId()) : false;
 
-    const handleAddToCart = () => {
-        if (!product) return;
-        // Enforce the variation choice (same guard as Buy Now) — otherwise the cart line
-        // silently gets a variant's price with no recorded color/size.
-        if ((colorSwatches.length > 0 && !selectedColor) || (sizeList.length > 0 && !selectedSize)) {
-            const need = [colorSwatches.length > 0 && !selectedColor ? 'color' : '', sizeList.length > 0 && !selectedSize ? 'size' : ''].filter(Boolean).join(' and ');
-            toast.error(`Please select ${need} first`);
-            return;
-        }
-        const cartId = getCartId();
-        if (isInCart) { setAddedToCart(true); setTimeout(() => setAddedToCart(false), 2000); return; }
-        const variantImage = activeVariant?.images?.[0] || allImages[selectedImage] || product.thumbnail;
-        dispatch(addToCart({ id: cartId, productId: product._id, name: product.name, price: discountedPrice, mrp: activeVariant?.originalPrice || product.originalPrice || product.price, image: variantImage, category: product.category?.name || 'General', quantity, color: selectedColor || undefined, colorHex: activeVariant?.colorHex || undefined, size: selectedSize || undefined }));
-        setAddedToCart(true);
-        setTimeout(() => setAddedToCart(false), 2000);
-    };
-
-    const handleBuyNow = () => {
-        if (!product || displayStock === 0) return;
-        // Buy Now skips the cart, so enforce the variation choice here too — otherwise
-        // an order could be placed without a required color/size.
-        if ((colorSwatches.length > 0 && !selectedColor) || (sizeList.length > 0 && !selectedSize)) {
-            const need = [colorSwatches.length > 0 && !selectedColor ? 'color' : '', sizeList.length > 0 && !selectedSize ? 'size' : ''].filter(Boolean).join(' and ');
-            toast.error(`Please select ${need} before buying`);
-            return;
-        }
-        const cartId = getCartId();
-        if (!isInCart) {
-            const variantImage = activeVariant?.images?.[0] || allImages[selectedImage] || product.thumbnail;
-            dispatch(addToCart({ id: cartId, productId: product._id, name: product.name, price: discountedPrice, mrp: activeVariant?.originalPrice || product.originalPrice || product.price, image: variantImage, category: product.category?.name || 'General', quantity, color: selectedColor || undefined, colorHex: activeVariant?.colorHex || undefined, size: selectedSize || undefined }));
-        }
-        router.push('/checkout');
-    };
-
     if (isLoading) {
         return (
-            <div style={{ minHeight: '100vh', background: '#fff' }}>
-                <div className="container mx-auto px-4 pb-6" style={{ paddingTop: '32px' }}>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                        {[50, 80, 120].map(w => <div key={w} style={{ height: '14px', width: `${w}px`, background: '#e5e7eb', borderRadius: '4px' }} className="animate-pulse" />)}
+            <div className="min-h-screen bg-[#2a2927] text-white">
+                <div className="container mx-auto px-4 py-8">
+                    <div className="flex gap-3 mb-6">
+                        {[70, 110, 150].map((w) => (
+                            <div key={w} style={{ width: `${w}px` }} className="h-4 bg-[#3d3c3a] rounded animate-pulse" />
+                        ))}
                     </div>
-                    <div style={{ background: '#fff', borderRadius: '6px', border: '1px solid #e5e7eb', padding: '16px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                        <div style={{ flex: '1 1 55%', aspectRatio: '1', background: '#f3f4f6', borderRadius: '6px' }} className="animate-pulse" />
-                        <div style={{ flex: '1 1 40%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {[60, 20, 80, 80, 40].map((h, i) => <div key={i} style={{ height: `${h}px`, background: '#f3f4f6', borderRadius: '6px' }} className="animate-pulse" />)}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                        <div className="lg:col-span-5 h-[460px] bg-[#3d3c3a] rounded-2xl animate-pulse" />
+                        <div className="lg:col-span-4 flex flex-col gap-3">
+                            <div className="h-6 w-32 bg-[#3d3c3a] rounded-full animate-pulse" />
+                            <div className="h-10 w-full bg-[#3d3c3a] rounded animate-pulse" />
+                            <div className="h-6 w-48 bg-[#3d3c3a] rounded animate-pulse" />
+                            <div className="h-40 w-full bg-[#3d3c3a] rounded-xl animate-pulse mt-4" />
+                        </div>
+                        <div className="lg:col-span-3 flex flex-col gap-3">
+                            <div className="h-44 bg-[#3d3c3a] rounded-2xl animate-pulse" />
+                            <div className="h-20 bg-[#3d3c3a] rounded-2xl animate-pulse" />
+                            <div className="h-40 bg-[#3d3c3a] rounded-2xl animate-pulse" />
                         </div>
                     </div>
                 </div>
@@ -169,12 +141,14 @@ export default function ProductDetailsPage() {
 
     if (isError || !product) {
         return (
-            <div style={{ minHeight: '100vh', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ textAlign: 'center', padding: '4rem 2rem', background: '#fff', borderRadius: '6px', maxWidth: '380px', margin: '0 auto', border: '1px solid #e5e7eb' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>😕</div>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111', marginBottom: '0.5rem' }}>Product Not Found</h2>
-                    <p style={{ color: '#6b7280', marginBottom: '1.5rem', fontSize: '14px' }}>This product may have been removed or is no longer available.</p>
-                    <Link href="/products" style={{ padding: '0.625rem 1.5rem', background: 'var(--color-primary)', color: '#fff', borderRadius: '6px', fontWeight: 600, textDecoration: 'none', fontSize: '14px' }}>Browse Products</Link>
+            <div className="min-h-screen bg-[#2a2927] flex items-center justify-center p-4">
+                <div className="text-center p-8 bg-[#3d3c3a] rounded-2xl max-w-sm w-full border border-white/10 shadow-2xl">
+                    <div className="text-5xl mb-3">😕</div>
+                    <h2 className="text-xl font-bold text-white mb-2">Product Not Found</h2>
+                    <p className="text-gray-400 mb-6 text-sm">This product may have been removed or is no longer available.</p>
+                    <Link href="/products" className="inline-block px-6 py-2.5 bg-[#ffdd00] text-black font-extrabold rounded-xl hover:bg-[#e6c700] transition">
+                        Browse Products
+                    </Link>
                 </div>
             </div>
         );
@@ -195,7 +169,7 @@ export default function ProductDetailsPage() {
     })();
 
     const sizeList: string[] = (() => {
-        if (hasVariants) return [...new Set(variants.filter((v: any) => v.size).map((v: any) => v.size))];
+        if (hasVariants) return [...new Set(variants.filter((v: any) => v.size).map((v: any) => v.size))] as string[];
         return product.sizes?.length > 0 ? product.sizes : [];
     })();
 
@@ -223,9 +197,6 @@ export default function ProductDetailsPage() {
         return map;
     })();
 
-    // Only resolve a variant AFTER the shopper has made a selection — otherwise the
-    // page would show variant #1's price/stock (and skip the base offer window) before
-    // anything is picked, disagreeing with the (empty) swatch/size selection UI.
     const hasVariantSelection = !!selectedColor || !!selectedSize;
     const activeVariant = hasVariants && hasVariantSelection
         ? (variants.find((v: any) => (!selectedColor || v.color === selectedColor) && (!selectedSize || v.size === selectedSize)) || null)
@@ -247,64 +218,84 @@ export default function ProductDetailsPage() {
                     if (!seen.has(resolvedImg)) { seen.add(resolvedImg); imgs.push(resolvedImg); } 
                 });
             });
-            return imgs;
+            return imgs.length > 0 ? imgs : baseImages;
         }
-        return baseImages;
+        return baseImages.length > 0 ? baseImages : ['/images/placeholder.png'];
     })();
 
-    // Base-product offer respecting the validity window (offerStartDate/offerEndDate).
-    // When the offer has expired or not yet started, the regular price is shown and no
-    // discount applies. Variants carry their own pricing and are not gated by this window.
     const offerDisplay = getDisplayPrice(product);
 
     const discountedPrice = (() => {
-        if (activeVariant) { const vd = activeVariant.discount || 0; return vd > 0 ? activeVariant.price - (activeVariant.price * vd) / 100 : activeVariant.price; }
-        // `price` IS the offer price the customer pays — don't re-apply discount on top of it.
-        // Offer active → offer price (product.price); offer inactive → regular (original) price.
+        if (activeVariant) {
+            const vd = activeVariant.discount || 0;
+            return vd > 0 ? activeVariant.price - (activeVariant.price * vd) / 100 : activeVariant.price;
+        }
         return offerDisplay.currentPrice;
     })();
 
+    const strikePrice = activeVariant?.originalPrice || (offerDisplay.offerActive ? product.originalPrice : (product.originalPrice > discountedPrice ? product.originalPrice : undefined));
+    const discountPercent = activeVariant
+        ? (activeVariant.discount || (strikePrice ? Math.round(((strikePrice - discountedPrice) / strikePrice) * 100) : 0))
+        : (offerDisplay.discount || (strikePrice ? Math.round(((strikePrice - discountedPrice) / strikePrice) * 100) : 0));
+
     const displayStock = activeVariant ? activeVariant.stock : product.stock;
 
-    const productDetails: { key: string; value: string }[] = [];
-    if (product.sku) productDetails.push({ key: 'Model', value: product.sku });
-    if (product.brand) productDetails.push({ key: 'Brand', value: product.brand.toUpperCase() });
-    if (product.specifications?.length > 0) product.specifications.forEach((spec: any) => productDetails.push({ key: spec.key, value: spec.value }));
-    if (product.material?.length > 0) productDetails.push({ key: 'Material', value: product.material.join(', ') });
-    if (product.weight && String(product.weight).trim()) productDetails.push({ key: 'Weight', value: String(product.weight) });
-    if (product.colors?.length > 0) productDetails.push({ key: 'Color', value: product.colors.join(', ') });
-    if (product.sizes?.length > 0) productDetails.push({ key: 'Size', value: product.sizes.join(', ') });
-    if (productDetails.length === 0) {
-        productDetails.push({ key: 'Category', value: product.category?.name || 'General' });
-        productDetails.push({ key: 'Stock', value: product.stock > 0 ? `${product.stock} available` : 'Out of Stock' });
-    }
+    const handleAddToCart = () => {
+        if (!product) return;
+        if ((colorSwatches.length > 0 && !selectedColor) || (sizeList.length > 0 && !selectedSize)) {
+            const need = [colorSwatches.length > 0 && !selectedColor ? 'color' : '', sizeList.length > 0 && !selectedSize ? 'size' : ''].filter(Boolean).join(' and ');
+            toast.error(`Please select ${need} first`);
+            return;
+        }
+        const cartId = getCartId();
+        if (isInCart) {
+            setAddedToCart(true);
+            setTimeout(() => setAddedToCart(false), 2000);
+            return;
+        }
+        const variantImage = activeVariant?.images?.[0] || allImages[selectedImage] || product.thumbnail;
+        dispatch(addToCart({
+            id: cartId,
+            productId: product._id,
+            name: product.name,
+            price: discountedPrice,
+            mrp: activeVariant?.originalPrice || product.originalPrice || product.price,
+            image: variantImage,
+            category: product.category?.name || 'General',
+            quantity,
+            color: selectedColor || undefined,
+            colorHex: activeVariant?.colorHex || undefined,
+            size: selectedSize || undefined
+        }));
+        setAddedToCart(true);
+        setTimeout(() => setAddedToCart(false), 2000);
+    };
 
-    // Daraz-style key specifications (only rows with a value)
-    const keySpecs: { label: string; value: string }[] = [];
-    if (product.brand) keySpecs.push({ label: 'Brand', value: String(product.brand) });
-    if (product.model) keySpecs.push({ label: 'Model', value: String(product.model) });
-    if (product.weight) keySpecs.push({ label: 'Weight', value: `${product.weight}` });
-    // Box Size as "Length × Width × Height cm" from dimensions; fall back to the
-    // legacy free-text boxSize string when no real dimensions are set.
-    const dims = product.dimensions || {};
-    const dimL = Number(dims.length) || 0;
-    const dimW = Number(dims.width) || 0;
-    const dimH = Number(dims.height) || 0;
-    const hasDimensions = dimL > 0 || dimW > 0 || dimH > 0;
-    if (hasDimensions) {
-        keySpecs.push({ label: 'Box Size', value: `${dimL} × ${dimW} × ${dimH} cm` });
-    } else if (product.boxSize && String(product.boxSize).trim()) {
-        keySpecs.push({ label: 'Box Size', value: String(product.boxSize) });
-    }
-    // "Inside the Box" may be a string or an array of items
-    const insideTheBoxItems: string[] = Array.isArray(product.insideTheBox)
-        ? product.insideTheBox.filter((x: any) => x && String(x).trim())
-        : (product.insideTheBox && String(product.insideTheBox).trim() ? [String(product.insideTheBox)] : []);
-    const hasSpecsSection = keySpecs.length > 0 || insideTheBoxItems.length > 0;
-
-    const getColorHex = (colorName: string) => {
-        const map: Record<string, string> = { red: '#FF0000', orange: '#FF8C00', yellow: '#FFD700', green: '#00C853', blue: '#2196F3', black: '#000000', white: '#FFFFFF', pink: '#FF69B4', purple: '#9C27B0', brown: '#795548', gray: '#9E9E9E', grey: '#9E9E9E', navy: '#001F3F', teal: '#009688', maroon: '#800000', olive: '#808000', cyan: '#00BCD4', lime: '#76FF03', coral: '#FF7F50', gold: '#FFD700', silver: '#C0C0C0', beige: '#F5F5DC', cream: '#FFFDD0', khaki: '#F0E68C' };
-        return map[colorName.toLowerCase()] || colorName;
+    const handleBuyNow = () => {
+        if (!product || displayStock === 0) return;
+        if ((colorSwatches.length > 0 && !selectedColor) || (sizeList.length > 0 && !selectedSize)) {
+            const need = [colorSwatches.length > 0 && !selectedColor ? 'color' : '', sizeList.length > 0 && !selectedSize ? 'size' : ''].filter(Boolean).join(' and ');
+            toast.error(`Please select ${need} before buying`);
+            return;
+        }
+        const cartId = getCartId();
+        if (!isInCart) {
+            const variantImage = activeVariant?.images?.[0] || allImages[selectedImage] || product.thumbnail;
+            dispatch(addToCart({
+                id: cartId,
+                productId: product._id,
+                name: product.name,
+                price: discountedPrice,
+                mrp: activeVariant?.originalPrice || product.originalPrice || product.price,
+                image: variantImage,
+                category: product.category?.name || 'General',
+                quantity,
+                color: selectedColor || undefined,
+                colorHex: activeVariant?.colorHex || undefined,
+                size: selectedSize || undefined
+            }));
+        }
+        router.push('/checkout');
     };
 
     const handleColorSelect = (colorName: string) => {
@@ -315,7 +306,10 @@ export default function ProductDetailsPage() {
             if (!sizesForNewColor.includes(selectedSize)) setSelectedSize('');
         }
         const colorImgs = colorImageMap[colorName];
-        if (colorImgs?.length > 0) { const idx = allImages.indexOf(colorImgs[0]); if (idx >= 0) setSelectedImage(idx); }
+        if (colorImgs?.length > 0) {
+            const idx = allImages.indexOf(colorImgs[0]);
+            if (idx >= 0) setSelectedImage(idx);
+        }
     };
 
     const handleImageSelect = (imgIdx: number) => {
@@ -329,838 +323,998 @@ export default function ProductDetailsPage() {
         setSelectedSize(size);
     };
 
+    const scrollToSimilar = () => {
+        const el = document.getElementById('this-might-also-work');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    const scrollToSpecs = () => {
+        setActiveBottomTab('description');
+        const el = document.getElementById('product-specs-section');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    const copySku = () => {
+        const article = product.sku || product._id?.slice(-8) || '4514702933';
+        navigator.clipboard.writeText(article);
+        setSkuCopied(true);
+        toast.success(`Market Article copied: ${article}`);
+        setTimeout(() => setSkuCopied(false), 2000);
+    };
+
+    const copyPromo = () => {
+        navigator.clipboard.writeText('HOME15C');
+        setPromoCopied(true);
+        toast.success('Promo code HOME15C copied!');
+        setTimeout(() => setPromoCopied(false), 2000);
+    };
+
+    const scrollRelated = (direction: 'left' | 'right') => {
+        if (relatedScrollRef.current) {
+            const amount = direction === 'left' ? -320 : 320;
+            relatedScrollRef.current.scrollBy({ left: amount, behavior: 'smooth' });
+        }
+    };
+
+    const marketArticle = product.sku || product._id?.slice(-10) || '4514702933';
+    const dims = product.dimensions || {};
+    const dimL = Number(dims.length) || 0;
+    const dimW = Number(dims.width) || 0;
+    const dimH = Number(dims.height) || 0;
+    const dimensionsText = dimL > 0 || dimW > 0 ? `${dimL || 92}×${dimW || 33} cm` : (product.boxSize || '92×33 cm');
+    const maxHeightText = dimH > 0 ? `${dimH} cm` : (product.weight ? `${product.weight} kg` : '13 cm');
+    const designText = product.material?.join(', ') || product.model || 'tabletop, folding';
+    const colorText = selectedColor || (colorSwatches[0]?.name) || (product.colors?.[0]) || 'soft gray';
+
     return (
-        <>
-            <div style={{ minHeight: '100vh', background: '#fff' }}>
-                <div className="container mx-auto px-2 sm:px-4 pb-8" style={{ paddingTop: '32px' }}>
+        <div className="min-h-screen bg-[#2a2927] text-[#e0e0e0] font-sans antialiased selection:bg-[#ffdd00] selection:text-black">
+            <div className="container mx-auto px-3 sm:px-5 lg:px-6 py-4 sm:py-6 max-w-[1440px]">
 
-                    {/* ── Fullscreen Modal ── */}
-                    {isFullscreen && (
-                        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-                            onClick={() => { setIsFullscreen(false); setZoomLevel(1); setPanOffset({ x: 0, y: 0 }); }}>
-                            <button onClick={() => { setIsFullscreen(false); setZoomLevel(1); setPanOffset({ x: 0, y: 0 }); }}
-                                style={{ position: 'absolute', top: '1rem', right: '1rem', width: '40px', height: '40px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10 }}>
-                                <LuX size={22} />
-                            </button>
-                            {allImages.length > 1 && (
-                                <div className="pd-zoom-thumbs" style={{ position: 'absolute', left: '11rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 10 }}>
-                                    {allImages.map((img, idx) => (
-                                        <button key={idx} onClick={(e) => { e.stopPropagation(); handleImageSelect(idx); setZoomLevel(1); setPanOffset({ x: 0, y: 0 }); }}
-                                            style={{ position: 'relative', width: '56px', height: '56px', borderRadius: '6px', overflow: 'hidden', border: selectedImage === idx ? '2px solid #fff' : '2px solid rgba(255,255,255,0.2)', opacity: selectedImage === idx ? 1 : 0.6, cursor: 'pointer', background: 'transparent', padding: 0, transform: selectedImage === idx ? 'scale(1.1)' : 'scale(1)', transition: 'all 0.2s ease' }}>
-                                            <SmartImage src={img} alt="" fill sizes="56px" className="object-cover" />
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                            <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '12px' }} onClick={(e) => e.stopPropagation()}>
-                                <button onClick={() => { if (selectedImage > 0) { setSelectedImage(p => p - 1); setZoomLevel(1); setPanOffset({ x: 0, y: 0 }); } }} disabled={selectedImage === 0}
-                                    style={{ background: selectedImage === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '44px', height: '44px', cursor: selectedImage === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: selectedImage === 0 ? 0.3 : 1 }}>
-                                    <LuChevronLeft size={24} color="#fff" />
-                                </button>
-                                <div style={{ position: 'relative', width: 'min(92vh, 90vw)', height: 'min(92vh, 90vw)', flexShrink: 0, overflow: 'hidden', borderRadius: '6px' }}
-                                    onMouseDown={(e) => { if (zoomLevel > 1) { e.preventDefault(); isDraggingRef.current = true; hasDraggedRef.current = false; dragStartRef.current = { x: e.clientX - panOffsetRef.current.x, y: e.clientY - panOffsetRef.current.y }; } }}
-                                    onMouseMove={(e) => { if (isDraggingRef.current && zoomLevel > 1) { hasDraggedRef.current = true; const o = { x: e.clientX - dragStartRef.current.x, y: e.clientY - dragStartRef.current.y }; panOffsetRef.current = o; setPanOffset({ ...o }); } }}
-                                    onMouseUp={() => { isDraggingRef.current = false; }}
-                                    onMouseLeave={() => { isDraggingRef.current = false; }}>
-                                    <img src={allImages[selectedImage] || allImages[0]} alt={product.name} draggable={false}
-                                        style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '6px', transition: 'transform 0.1s ease', transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`, cursor: zoomLevel > 1 ? 'grab' : 'zoom-in', background: '#111', userSelect: 'none', transformOrigin: 'center center' }}
-                                        onClick={(e) => { if (hasDraggedRef.current) { hasDraggedRef.current = false; return; } e.stopPropagation(); if (zoomLevel > 1) { setZoomLevel(1); const r = { x: 0, y: 0 }; panOffsetRef.current = r; setPanOffset(r); } else { setZoomLevel(1.8); } }}
-                                        onWheel={(e) => { e.stopPropagation(); setZoomLevel(prev => { const n = Math.max(1, Math.min(2.5, prev + (e.deltaY < 0 ? 0.15 : -0.15))); if (n <= 1) { const r = { x: 0, y: 0 }; panOffsetRef.current = r; setPanOffset(r); } return n; }); }}
-                                    />
-                                    <div style={{ position: 'absolute', bottom: '12px', left: '50%', transform: 'translateX(-50%)', color: '#fff', fontSize: '13px', fontWeight: 600, background: 'rgba(0,0,0,0.55)', padding: '4px 14px', borderRadius: '20px', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
-                                        {selectedImage + 1} / {allImages.length}
-                                    </div>
-                                </div>
-                                <button onClick={() => { if (selectedImage < allImages.length - 1) { setSelectedImage(p => p + 1); setZoomLevel(1); setPanOffset({ x: 0, y: 0 }); } }} disabled={selectedImage === allImages.length - 1}
-                                    style={{ background: selectedImage === allImages.length - 1 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '44px', height: '44px', cursor: selectedImage === allImages.length - 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: selectedImage === allImages.length - 1 ? 0.3 : 1 }}>
-                                    <LuChevronRight size={24} color="#fff" />
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── Breadcrumb ── */}
-                    <nav className="pd-breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#9ca3af', padding: '4px 2px 10px', flexWrap: 'nowrap', overflowX: 'auto', whiteSpace: 'nowrap' }}>
-                        <Link href="/" style={{ color: '#9ca3af', textDecoration: 'none', flexShrink: 0 }}>Home</Link>
-                        {product.category?.name && (<>
-                            <LuChevronRight size={12} style={{ flexShrink: 0, color: '#cbd5e1' }} />
-                            <Link href={`/products?category=${product.category._id}`} style={{ color: '#9ca3af', textDecoration: 'none', flexShrink: 0 }}>{product.category.name}</Link>
-                        </>)}
-                        <LuChevronRight size={12} style={{ flexShrink: 0, color: '#cbd5e1' }} />
-                        <span style={{ color: '#555', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{product.name?.slice(0, 45)}{product.name?.length > 45 ? '...' : ''}</span>
+                {/* ════════════ TOP BREADCRUMB & UTILITY ROW ════════════ */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-4 text-[13px] border-b border-white/10">
+                    {/* Left: Breadcrumbs */}
+                    <nav className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap text-gray-400 no-scrollbar">
+                        <Link href="/" className="hover:text-white transition-colors">Home</Link>
+                        <span className="text-gray-600">›</span>
+                        {product.category?.name && (
+                            <>
+                                <Link href={`/products?category=${product.category._id}`} className="hover:text-white transition-colors">
+                                    {product.category.name}
+                                </Link>
+                                <span className="text-gray-600">›</span>
+                            </>
+                        )}
+                        {product.brand && (
+                            <>
+                                <Link href={`/products?search=${encodeURIComponent(product.brand)}`} className="hover:text-white transition-colors">
+                                    {product.brand}
+                                </Link>
+                                <span className="text-gray-600">›</span>
+                            </>
+                        )}
+                        <span className="text-gray-300 font-medium truncate max-w-[280px] sm:max-w-[400px]">
+                            {product.name}
+                        </span>
                     </nav>
 
-                    {/* ── TOP: 3-column ── */}
-                    <div className="pd-top-grid" style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    {/* Right: Actions */}
+                    <div className="flex items-center gap-4 text-xs font-semibold text-gray-300 shrink-0">
+                        <button
+                            type="button"
+                            onClick={() => toast('Product added to comparison', { icon: '⚖️' })}
+                            className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer"
+                        >
+                            <LuScale size={15} /> Compare
+                        </button>
 
-                        {/* ════ COLUMN 1 — Gallery (~50%) ════ */}
-                        <div className="pd-col-gallery" style={{ flex: '0 0 50%', maxWidth: '50%', display: 'flex', gap: '20px' }}>
-                            {/* Thumbnails (Left) */}
-                            <div style={{ display: 'flex', flexDirection: 'column', width: '120px', flexShrink: 0, justifyContent: 'center', gap: '8px', maxHeight: '100%' }}>
-                                {allImages.length > 4 && (
-                                    <button onClick={() => { if (colorSwatchRef.current) colorSwatchRef.current.scrollBy({ top: -140, behavior: 'smooth' }); }} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '4px', cursor: 'pointer', padding: '4px', color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', flexShrink: 0 }}>
-                                        <LuChevronUp size={18} />
-                                    </button>
-                                )}
-                                
-                                <div ref={colorSwatchRef} className="no-scrollbar pd-thumb-strip" style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: allImages.length > 4 ? 'auto' : 'visible', flex: allImages.length > 4 ? 1 : 'none', scrollBehavior: 'smooth', justifyContent: 'flex-start', height: allImages.length > 4 ? 0 : 'auto', minHeight: 0 }}>
-                                    {allImages.map((img: string, idx: number) => (
-                                        <button key={idx} onClick={() => handleImageSelect(idx)} onMouseEnter={() => handleImageSelect(idx)}
-                                            style={{ position: 'relative', width: '120px', height: '120px', flexShrink: 0, border: selectedImage === idx ? '1px solid #111' : '1px solid #e5e7eb', borderRadius: '4px', cursor: 'pointer', transition: 'all 0.2s ease', overflow: 'hidden', padding: 0, background: '#fff' }}>
-                                            <SmartImage src={img} alt={`Product ${idx + 1}`} fill sizes="120px" className="object-cover" />
+                        <button
+                            type="button"
+                            onClick={() => toggleWishlistItem(product._id || product.id)}
+                            className={`flex items-center gap-1.5 transition-colors cursor-pointer ${isWishlisted ? 'text-[#ff5226]' : 'hover:text-white'}`}
+                        >
+                            <LuHeart size={15} className={isWishlisted ? 'fill-[#ff5226]' : ''} />
+                            {isWishlisted ? 'In favorites' : 'Add to favorites'}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setShowSharePopup(true)}
+                            className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer"
+                        >
+                            <LuShare2 size={15} /> Share
+                        </button>
+                    </div>
+                </div>
+
+                {/* ════════════ MAIN 3-COLUMN PRODUCT SECTION ════════════ */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 pt-5 items-start">
+
+                    {/* ────────────────── COLUMN 1: GALLERY (4 cols) ────────────────── */}
+                    <div className="lg:col-span-5 flex flex-row items-start gap-3 sm:gap-4">
+                        {/* Vertical Thumbnail Strip (Left) */}
+                        <div className="flex flex-col items-center gap-2 w-16 sm:w-20 shrink-0">
+                            {allImages.length > 4 && (
+                                <button
+                                    onClick={() => thumbStripRef.current?.scrollBy({ top: -110, behavior: 'smooth' })}
+                                    className="w-full py-1 rounded-lg bg-[#3d3c3a] text-gray-400 hover:text-white flex items-center justify-center transition"
+                                    aria-label="Scroll up"
+                                >
+                                    <LuChevronUp size={16} />
+                                </button>
+                            )}
+
+                            <div
+                                ref={thumbStripRef}
+                                className="flex flex-col gap-2.5 max-h-[460px] overflow-y-auto no-scrollbar scroll-smooth w-full"
+                            >
+                                {allImages.map((img: string, idx: number) => {
+                                    const isSelected = selectedImage === idx;
+                                    return (
+                                        <button
+                                            key={idx}
+                                            onClick={() => handleImageSelect(idx)}
+                                            onMouseEnter={() => handleImageSelect(idx)}
+                                            className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-white/95 p-1 transition-all shrink-0 cursor-pointer ${
+                                                isSelected
+                                                    ? 'ring-2 ring-white ring-offset-2 ring-offset-[#2a2927] scale-102'
+                                                    : 'border border-white/10 opacity-75 hover:opacity-100'
+                                            }`}
+                                        >
+                                            <SmartImage
+                                                src={img}
+                                                alt={`${product.name} ${idx + 1}`}
+                                                fill
+                                                sizes="80px"
+                                                className="object-contain p-0.5"
+                                            />
                                         </button>
-                                    ))}
-                                </div>
-
-                                {allImages.length > 4 && (
-                                    <button onClick={() => { if (colorSwatchRef.current) colorSwatchRef.current.scrollBy({ top: 140, behavior: 'smooth' }); }} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '4px', cursor: 'pointer', padding: '4px', color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', flexShrink: 0 }}>
-                                        <LuChevronDown size={18} />
-                                    </button>
-                                )}
+                                    );
+                                })}
                             </div>
 
-                            {/* Main Image (Right) */}
-                            <div className="pd-main-image-box" style={{ flex: 1, position: 'relative', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
-                                <div style={{ width: '100%', height: '100%', aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }} onClick={() => setIsFullscreen(true)}>
-                                    <SmartImage src={allImages[selectedImage] || allImages[0]} alt={product.name}
-                                        fill sizes="(max-width: 1024px) 100vw, 45vw"
-                                        className="object-cover"
-                                    />
-                                    <div style={{ position: 'absolute', bottom: '10px', right: '10px', background: 'var(--color-primary)', borderRadius: '50%', padding: '7px', color: '#fff', opacity: 0, transition: 'opacity 0.3s' }} className="zoom-indicator">
-                                        <LuZoomIn size={16} />
-                                    </div>
-                                    {offerDisplay.offerActive && offerDisplay.discount > 0 && (
-                                        <div className="discount-badge" style={{ position: 'absolute', top: '10px', left: '10px', background: 'var(--color-primary)', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '9999px', zIndex: 2 }}>
-                                            -{offerDisplay.discount}% Off
-                                        </div>
-                                    )}
-                                    {product.stock <= 5 && product.stock > 0 && (
-                                        <div style={{ position: 'absolute', top: '10px', right: '10px', background: '#f59e0b', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '9999px', zIndex: 2 }} className="animate-pulse">
-                                            Only {product.stock} left!
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            {allImages.length > 4 && (
+                                <button
+                                    onClick={() => thumbStripRef.current?.scrollBy({ top: 110, behavior: 'smooth' })}
+                                    className="w-full py-1 rounded-lg bg-[#3d3c3a] text-gray-400 hover:text-white flex items-center justify-center transition"
+                                    aria-label="Scroll down"
+                                >
+                                    <LuChevronDown size={16} />
+                                </button>
+                            )}
                         </div>
 
-                        {/* ════ COLUMN 2 — Info (~50%) ════ */}
-                        <div className="pd-col-info" style={{ flex: '0 0 50%', maxWidth: '50%', background: '#fff', padding: '0 10px' }}>
-                            {/* Title */}
-                            <h1 className="pd-title" style={{ fontSize: '17px', fontWeight: 600, color: '#222', margin: '0 0 10px', lineHeight: 1.45 }}>{product.name}</h1>
-                            {product.tagline && <p style={{ fontSize: '13px', color: 'var(--color-primary)', fontWeight: 500, margin: '0 0 8px' }}>{product.tagline}</p>}
-
-                            {/* Brand badge */}
+                        {/* Large Main Preview Image (Right) */}
+                        <div className="relative flex-1 rounded-2xl bg-gradient-to-b from-[#f8f9fa] to-[#ececec] overflow-hidden border border-white/10 shadow-lg group">
+                            {/* Top Left Watermark / Brand text */}
                             {product.brand && (
-                                <Link href={`/products?search=${encodeURIComponent(product.brand)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#eef0f2', color: '#374151', fontSize: '12px', fontWeight: 600, padding: '3px 10px', borderRadius: '6px', textDecoration: 'none', marginBottom: '10px' }}>
-                                    Brand: {product.brand} <LuChevronRight size={12} />
-                                </Link>
-                            )}
-
-                            {/* Sold · seller · rating */}
-                            <div className="pd-stats-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', fontSize: '13px', color: '#777', marginBottom: '10px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                    <span>{formatCompact(product.soldCount || product.totalSold || 0)}+ sold</span>
-                                    {product.brand && (<>
-                                        <span style={{ color: '#e5e7eb' }}>|</span>
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                                            Sourced from <span style={{ fontWeight: 700, color: '#374151' }}>{product.brand}</span>
-                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: '#4a1a7c', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '1px 7px', borderRadius: '9999px' }}>★ Star seller</span>
-                                        </span>
-                                    </>)}
-                                </div>
-                                <button onClick={() => setShowRatingModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                                    <span style={{ fontSize: '15px', fontWeight: 700, color: '#111' }}>{(product.rating || 0).toFixed(1)}</span>
-                                    <div style={{ display: 'flex', gap: '1px' }}>{[1,2,3,4,5].map(s => <LuStar key={s} size={13} style={{ color: '#111', fill: s <= Math.round(product.rating || 0) ? '#111' : 'none' }} />)}</div>
-                                </button>
-                            </div>
-
-                            {/* Best-selling badge */}
-                            {product.category?.name && (
-                                <Link href={`/products?category=${product.category._id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#0a8a00', color: '#fff', fontSize: '12px', fontWeight: 700, padding: '4px 10px', borderRadius: '6px', textDecoration: 'none', marginBottom: '14px' }}>
-                                    #1 BEST-SELLING ITEM <span style={{ fontWeight: 500 }}>in {product.category.name}</span> <LuChevronRight size={12} />
-                                </Link>
-                            )}
-
-                            {/* PRICE block */}
-                            {(() => {
-                                // Variant pricing wins when a variant is selected; otherwise the base
-                                // product price is gated by its offer-validity window.
-                                const showOffer = activeVariant ? true : offerDisplay.offerActive;
-                                const strikePrice = activeVariant?.originalPrice || (showOffer ? product.originalPrice : undefined);
-                                const offerDiscount = activeVariant ? (activeVariant.discount || 0) : (showOffer ? offerDisplay.discount : 0);
-                                return (
-                            <div style={{ marginBottom: '14px' }}>
-                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
-                                    <span className="pd-price" style={{ fontSize: '30px', fontWeight: 800, color: 'var(--color-primary)', letterSpacing: '-0.5px' }}>
-                                        ৳{discountedPrice.toLocaleString()}
+                                <div className="absolute top-3.5 left-4 z-10 pointer-events-none">
+                                    <span className="text-[13px] font-bold text-gray-700 tracking-wider uppercase opacity-85">
+                                        {product.brand}
                                     </span>
-                                    {strikePrice && strikePrice > discountedPrice && (
-                                        <span style={{ fontSize: '14px', color: '#9ca3af', textDecoration: 'line-through' }}>Was: ৳{strikePrice.toLocaleString()}</span>
-                                    )}
-                                    {offerDiscount > 0 && (
-                                        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-primary)', border: '1px solid var(--color-primary)', padding: '1px 7px', borderRadius: '4px' }}>{offerDiscount}% OFF</span>
-                                    )}
-                                </div>
-                                {/* Lowest-price + offer-validity badges */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
-                                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#b45309', border: '1px solid #f59e0b', background: '#fffbeb', padding: '2px 8px', borderRadius: '4px' }}>Lowest price in 30 days</span>
-                                    {!activeVariant && offerDisplay.offerActive && offerDisplay.offerEndDate && (
-                                        <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                                            <LuClock size={12} /> Till {offerDisplay.offerEndDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
-                                        </span>
-                                    )}
-                                </div>
-                                {/* Stock & SKU */}
-                                <div style={{ display: 'flex', gap: '7px', marginTop: '10px', flexWrap: 'wrap' }}>
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, background: displayStock > 5 ? 'rgba(34,197,94,0.08)' : displayStock > 0 ? '#fffbeb' : '#fef2f2', color: displayStock > 5 ? '#16a34a' : displayStock > 0 ? '#d97706' : '#dc2626', border: `1px solid ${displayStock > 5 ? 'rgba(34,197,94,0.2)' : displayStock > 0 ? '#fde68a' : '#fecaca'}` }}>
-                                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
-                                        {displayStock > 5 ? 'In Stock' : displayStock > 0 ? `Only ${displayStock} left` : 'Out of Stock'}
-                                    </span>
-                                    {product.sku && <span style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 500, background: '#f3f4f6', color: '#666' }}>SKU: {product.sku}</span>}
-                                </div>
-                            </div>
-                                );
-                            })()}
-
-                            {/* Free shipping / credit strip */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap', background: '#fdf4ee', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px' }}>
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#16a34a' }}><LuCircleCheck size={15} /> Free shipping</span>
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, color: '#16a34a' }}><LuCircleCheck size={15} /> ৳500 Credit for delay <LuChevronRight size={13} style={{ color: '#9ca3af' }} /></span>
-                            </div>
-
-                            {/* Color Family */}
-                            {colorSwatches.length > 0 && (
-                                <div style={{ marginBottom: '14px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#888' }}>Color Family</span>
-                                        {selectedColor && <span style={{ fontSize: '12px', color: '#111', fontWeight: 600 }}>{selectedColor}</span>}
-                                    </div>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                        {colorSwatches.map((color: any, idx: number) => {
-                                            const isAvailable = availableColorsForSize.includes(color.name);
-                                            const isSelected = selectedColor === color.name;
-                                            return (
-                                                <button key={idx} onClick={() => handleColorSelect(color.name)} title={color.name}
-                                                    style={{ width: '30px', height: '30px', background: getColorHex(color.hex || color.name), border: isSelected ? '2.5px solid var(--color-primary)' : '2px solid #e0e0e0', borderRadius: '50%', cursor: 'pointer', transition: 'all 0.2s', boxShadow: isSelected ? '0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent)' : 'none', opacity: !isAvailable ? 0.45 : 1, position: 'relative', overflow: 'hidden', padding: 0, flexShrink: 0 }}>
-                                                    {!isAvailable && <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top right, transparent calc(50% - 1px), rgba(180,180,180,0.7) calc(50% - 1px), rgba(180,180,180,0.7) calc(50% + 1px), transparent calc(50% + 1px))', pointerEvents: 'none' }} />}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
                                 </div>
                             )}
 
-                            {/* Size */}
-                            {sizeList.length > 0 && (
-                                <div style={{ marginBottom: '14px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#888' }}>Size</span>
-                                        {selectedSize && <span style={{ fontSize: '12px', color: '#111', fontWeight: 600 }}>{selectedSize}</span>}
-                                    </div>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                        {sizeList.map((size: string, idx: number) => {
-                                            const isAvailable = availableSizesForColor.includes(size);
-                                            const isSelected = selectedSize === size;
-                                            return (
-                                                <button key={idx} onClick={() => isAvailable && handleSizeSelect(size)}
-                                                    style={{ minWidth: '44px', height: '36px', padding: '0 12px', background: isSelected ? 'color-mix(in srgb, var(--color-primary) 8%, transparent)' : !isAvailable ? '#f9fafb' : '#fff', color: isSelected ? 'var(--color-primary)' : !isAvailable ? '#ccc' : '#333', border: isSelected ? '2px solid var(--color-primary)' : !isAvailable ? '1px solid #eee' : '1px solid #d1d5db', borderRadius: '4px', cursor: !isAvailable ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '13px', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: !isAvailable ? 0.5 : 1 }}>
-                                                    {size}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Quantity */}
-                            <div style={{ marginBottom: '16px' }}>
-                                <span style={{ fontSize: '13px', color: '#555', display: 'block', marginBottom: '8px' }}>Quantity: <span style={{ fontWeight: 600, color: '#111' }}>1pc</span></span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#555' }}>Qty</span>
-                                    <div style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid #d1d5db', borderRadius: '8px', overflow: 'hidden', height: '40px' }}>
-                                        <button onClick={() => setQuantity(Math.max(1, quantity - 1))} style={{ width: '38px', height: '100%', background: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}><LuMinus size={15} /></button>
-                                        <span style={{ width: '44px', textAlign: 'center', fontSize: '15px', fontWeight: 700, color: '#111', borderLeft: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{quantity}</span>
-                                        <button onClick={() => setQuantity(quantity + 1)} style={{ width: '38px', height: '100%', background: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}><LuPlus size={15} /></button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Big orange Add to Cart (Temu-style) */}
-                            {(() => {
-                                const headlineDiscount = activeVariant ? (activeVariant.discount || 0) : (offerDisplay.offerActive ? offerDisplay.discount : 0);
-                                return (
-                            <button onClick={handleAddToCart} disabled={displayStock === 0}
-                                style={{ width: '100%', padding: '11px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px', background: displayStock === 0 ? '#9ca3af' : '#fb7701', border: 'none', color: '#fff', cursor: displayStock === 0 ? 'not-allowed' : 'pointer', borderRadius: '9999px', transition: 'all 0.2s', marginBottom: '10px', lineHeight: 1.2 }}>
-                                <span style={{ fontSize: '16px', fontWeight: 800 }}>
-                                    {addedToCart ? 'Added to cart ✓' : displayStock === 0 ? 'Out of Stock' : headlineDiscount > 0 ? `-${headlineDiscount}% now! Add to cart!` : 'Add to cart!'}
-                                </span>
-                                {!addedToCart && displayStock > 0 && <span style={{ fontSize: '11px', fontWeight: 500, opacity: 0.92 }}>Lowest price in half year</span>}
-                            </button>
-                                );
-                            })()}
-
-                            {/* Buy Now (secondary) */}
-                            <button onClick={handleBuyNow} disabled={displayStock === 0}
-                                style={{ width: '100%', padding: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#fff', border: '2px solid var(--color-primary)', color: 'var(--color-primary)', fontWeight: 700, fontSize: '15px', cursor: displayStock === 0 ? 'not-allowed' : 'pointer', borderRadius: '9999px', transition: 'all 0.2s', marginBottom: '18px', opacity: displayStock === 0 ? 0.5 : 1 }}>
-                                <LuShoppingBag size={16} /> Buy Now
+                            {/* Top Right: "Similar" Camera Button */}
+                            <button
+                                type="button"
+                                onClick={scrollToSimilar}
+                                className="absolute top-3 right-3 z-10 px-3 py-1.5 rounded-full bg-black/65 hover:bg-black/85 backdrop-blur-md text-white text-xs font-semibold flex items-center gap-1.5 transition shadow cursor-pointer"
+                                title="View similar products"
+                            >
+                                <LuCamera size={14} /> Similar
                             </button>
 
-                            {/* Delivery card */}
-                            <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px 14px', marginBottom: '14px' }}>
-                                <p style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 700, color: '#16a34a', margin: '0 0 8px' }}><LuTruck size={16} /> Free shipping <LuChevronRight size={14} style={{ color: '#9ca3af' }} /></p>
-                                <p style={{ fontSize: '12px', color: '#555', margin: '0 0 4px', lineHeight: 1.6 }}><span style={{ color: '#16a34a', fontWeight: 600 }}>Standard: FREE.</span> Usually ships out in 1–5 days.</p>
-                                {shipsFrom && <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>Ships from {shipsFrom}</p>}
-                            </div>
+                            {/* Main Product Canvas */}
+                            <div
+                                className="relative w-full aspect-square flex items-center justify-center p-6 cursor-zoom-in"
+                                onClick={() => setIsFullscreen(true)}
+                            >
+                                <SmartImage
+                                    src={allImages[selectedImage] || allImages[0]}
+                                    alt={product.name}
+                                    fill
+                                    sizes="(max-width: 1024px) 100vw, 42vw"
+                                    className="object-contain transition-transform duration-300 group-hover:scale-103"
+                                    priority
+                                />
 
-                            {/* Safe payments */}
-                            <p style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#16a34a', margin: '0 0 12px' }}>
-                                <LuShield size={15} /> Safe payments · Secure privacy <LuChevronRight size={13} style={{ color: '#9ca3af' }} />
-                            </p>
-
-                            {/* Order guarantee badges */}
-                            <div style={{ marginBottom: '6px' }}>
-                                <p style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#16a34a', margin: '0 0 8px' }}>
-                                    <LuRefreshCw size={15} /> Order guarantee <LuChevronRight size={13} style={{ color: '#9ca3af' }} />
-                                </p>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                    {['Free returns', '৳500 Credit for delay', 'Return if item damaged', '18-day no update refund'].map((b) => (
-                                        <span key={b} style={{ fontSize: '11px', fontWeight: 600, color: '#15803d', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', padding: '3px 9px', borderRadius: '6px' }}>{b}</span>
-                                    ))}
+                                {/* Subtle zoom icon on hover */}
+                                <div className="absolute bottom-3 right-3 p-2 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <LuZoomIn size={16} />
                                 </div>
-                            </div>
-
-                            {/* EXTRA INFO ACCORDION (Added for layout match) */}
-                            <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {/* Accordion 0 - Shipping & Returns */}
-                                <details style={{ width: '100%' }}>
-                                    <summary style={{ fontSize: '13px', fontWeight: 700, color: '#111', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none', background: '#f9fafb', padding: '12px 16px', borderRadius: '4px' }}>
-                                        <LuMapPin size={14} style={{ color: '#6b7280' }} /> Shipping & Returns
-                                        <LuChevronDown size={14} style={{ marginLeft: 'auto', color: '#9ca3af' }} />
-                                    </summary>
-                                    <div style={{ padding: '16px 4px 4px', fontSize: '12px', color: '#555', lineHeight: 1.6 }}>
-                                        <p style={{ marginBottom: '8px' }}>Free shipping and returns available on all orders!</p>
-                                        <p style={{ fontWeight: 600 }}>We ship all US domestic orders within <span style={{ color: '#111' }}>5-10 business days</span></p>
-                                    </div>
-                                </details>
-
-                                {/* Accordion 1 - Materials */}
-                                {product.materialsInfo && (
-                                    <details style={{ width: '100%' }}>
-                                        <summary style={{ fontSize: '13px', fontWeight: 700, color: '#111', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none', background: '#f9fafb', padding: '12px 16px', borderRadius: '4px' }}>
-                                            <LuCircleCheck size={14} style={{ color: '#6b7280' }} /> Materials
-                                            <LuChevronDown size={14} style={{ marginLeft: 'auto', color: '#9ca3af' }} />
-                                        </summary>
-                                        <div style={{ padding: '16px 4px 4px', fontSize: '12px', color: '#555', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: product.materialsInfo }} />
-                                    </details>
-                                )}
-
-                                {/* Accordion 2 - Size Chart */}
-                                {product.sizeChart && (
-                                    <details open style={{ width: '100%' }}>
-                                        <summary style={{ fontSize: '13px', fontWeight: 700, color: '#111', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none', background: '#f9fafb', padding: '12px 16px', borderRadius: '4px' }}>
-                                            <LuMapPin size={14} style={{ color: '#6b7280' }} /> Size Chart
-                                            <LuChevronDown size={14} style={{ marginLeft: 'auto', color: '#9ca3af' }} />
-                                        </summary>
-                                        <div style={{ padding: '16px 4px 4px', fontSize: '12px', color: '#555', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: product.sizeChart }} />
-                                    </details>
-                                )}
-
-                                {/* Accordion 3 - Care Instructions */}
-                                {product.careInstructions && (
-                                    <details style={{ width: '100%' }}>
-                                        <summary style={{ fontSize: '13px', fontWeight: 700, color: '#111', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', listStyle: 'none', background: '#f9fafb', padding: '12px 16px', borderRadius: '4px' }}>
-                                            <LuHeart size={14} style={{ color: '#6b7280' }} /> Care Instructions
-                                            <LuChevronDown size={14} style={{ marginLeft: 'auto', color: '#9ca3af' }} />
-                                        </summary>
-                                        <div style={{ padding: '16px 4px 4px', fontSize: '12px', color: '#555', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: product.careInstructions }} />
-                                    </details>
-                                )}
-
-                            </div>
-
-                            {/* SHARE (Moved outside the accordion container) */}
-                            <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-start' }}>
-                                <button onClick={() => setShowSharePopup(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 700, background: '#fff', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', color: '#111', padding: '10px 20px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', transition: 'all 0.2s' }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb'; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
-                                >
-                                    <LuShare2 size={15} /> SHARE
-                                </button>
                             </div>
                         </div>
                     </div>
 
-                    {/* ════ BELOW: Tabs (Description & Reviews) ════ */}
-                    <div style={{ marginTop: '40px' }}>
-                        <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', gap: '4px' }}>
-                            <button onClick={() => setActiveBottomTab('description')}
-                                style={{ background: activeBottomTab === 'description' ? '#fff' : '#f9fafb', color: activeBottomTab === 'description' ? 'var(--color-primary)' : '#6b7280', fontSize: '15px', fontWeight: 700, padding: '12px 32px', borderRadius: '6px 6px 0 0', border: '1px solid #e5e7eb', borderBottom: activeBottomTab === 'description' ? '2px solid var(--color-primary)' : '1px solid transparent', cursor: 'pointer', marginBottom: '-1px', transition: 'all 0.2s' }}>
-                                Description
-                            </button>
-                            <button onClick={() => setActiveBottomTab('reviews')}
-                                style={{ background: activeBottomTab === 'reviews' ? '#fff' : '#f9fafb', color: activeBottomTab === 'reviews' ? 'var(--color-primary)' : '#6b7280', fontSize: '15px', fontWeight: 700, padding: '12px 32px', borderRadius: '6px 6px 0 0', border: '1px solid #e5e7eb', borderBottom: activeBottomTab === 'reviews' ? '2px solid var(--color-primary)' : '1px solid transparent', cursor: 'pointer', marginBottom: '-1px', transition: 'all 0.2s' }}>
-                                Reviews ({reviews?.length || product.reviewCount || 0})
+                    {/* ────────────────── COLUMN 2: INFO & SPECS (4 cols) ────────────────── */}
+                    <div className="lg:col-span-4 flex flex-col gap-3.5 pr-0 lg:pr-2">
+                        {/* Top Badges Row */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {/* Orange/Red Deal pill: "DISCOUNTS OF THE WEEK >" */}
+                            <div className="inline-flex items-center gap-1.5 bg-[#ff5226] text-white text-[11px] font-extrabold px-3 py-1 rounded-md uppercase tracking-wide shadow-sm">
+                                <span>Discounts of the week</span>
+                                <LuChevronRight size={13} strokeWidth={3} />
+                            </div>
+
+                            {/* White ORIGINAL pill */}
+                            <div className="inline-flex items-center bg-white text-black text-[11px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider">
+                                ORIGINAL
+                            </div>
+                        </div>
+
+                        {/* Title: BRAND > Product Name */}
+                        <h1 className="text-lg sm:text-[21px] font-bold text-white leading-snug">
+                            {product.brand && (
+                                <span className="uppercase text-gray-300 font-extrabold mr-1.5">
+                                    {product.brand} ›
+                                </span>
+                            )}
+                            <span>{product.name}</span>
+                        </h1>
+
+                        {/* Rating & Sales Row: ★★★★★ 4.8 (100) · 873 bought */}
+                        <div className="flex items-center gap-2 text-xs text-gray-400 flex-wrap">
+                            <div className="flex items-center gap-1 text-[#ffb800]">
+                                <div className="flex gap-0.5">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <LuStar
+                                            key={star}
+                                            size={13}
+                                            className={star <= Math.round(product.rating || 5) ? 'fill-[#ffb800] text-[#ffb800]' : 'text-gray-600'}
+                                        />
+                                    ))}
+                                </div>
+                                <span className="font-bold text-white ml-0.5">
+                                    {(product.rating || 4.8).toFixed(1)}
+                                </span>
+                            </div>
+                            <span className="text-gray-400">
+                                ({reviews.length || product.reviewCount || 100})
+                            </span>
+                            <span className="text-gray-600">·</span>
+                            <span className="text-gray-300 font-medium">
+                                {formatCompact(product.soldCount || product.totalSold || 873)} bought
+                            </span>
+                        </div>
+
+                        {/* Specifications List with Dotted Leader Lines (Yandex style) */}
+                        <div className="mt-2 space-y-2.5 text-xs">
+                            {/* Market Article / SKU */}
+                            <div className="flex items-baseline">
+                                <span className="text-gray-400 shrink-0">Market Article</span>
+                                <span className="flex-1 mx-2 border-b border-dotted border-gray-600 mb-1" />
+                                <span className="text-white font-medium flex items-center gap-1 shrink-0">
+                                    {marketArticle}
+                                    <button
+                                        type="button"
+                                        onClick={copySku}
+                                        className="text-gray-400 hover:text-white p-0.5 transition cursor-pointer"
+                                        title="Copy article"
+                                    >
+                                        {skuCopied ? <LuCheck size={12} className="text-green-400" /> : <LuCopy size={12} />}
+                                    </button>
+                                </span>
+                            </div>
+
+                            {/* Product Color */}
+                            <div className="flex items-baseline">
+                                <span className="text-gray-400 shrink-0">Product color</span>
+                                <span className="flex-1 mx-2 border-b border-dotted border-gray-600 mb-1" />
+                                <span className="text-white font-medium capitalize shrink-0">{colorText}</span>
+                            </div>
+
+                            {/* Design / Model */}
+                            <div className="flex items-baseline">
+                                <span className="text-gray-400 shrink-0">Design</span>
+                                <span className="flex-1 mx-2 border-b border-dotted border-gray-600 mb-1" />
+                                <span className="text-white font-medium shrink-0">{designText}</span>
+                            </div>
+
+                            {/* Dimensions */}
+                            <div className="flex items-baseline">
+                                <span className="text-gray-400 shrink-0">Dimensions (LxW)</span>
+                                <span className="flex-1 mx-2 border-b border-dotted border-gray-600 mb-1" />
+                                <span className="text-white font-medium shrink-0">{dimensionsText}</span>
+                            </div>
+
+                            {/* Maximum height / Weight */}
+                            <div className="flex items-baseline">
+                                <span className="text-gray-400 shrink-0">Maximum height</span>
+                                <span className="flex-1 mx-2 border-b border-dotted border-gray-600 mb-1" />
+                                <span className="text-white font-medium shrink-0">{maxHeightText}</span>
+                            </div>
+                        </div>
+
+                        {/* Variants Selector (Color & Size) */}
+                        {colorSwatches.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-white/10">
+                                <span className="text-xs text-gray-400 block mb-1.5 font-medium">Choose Color:</span>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {colorSwatches.map((color: any, idx: number) => {
+                                        const isSelected = selectedColor === color.name;
+                                        return (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => handleColorSelect(color.name)}
+                                                className={`text-xs px-2.5 py-1 rounded-lg border transition cursor-pointer flex items-center gap-1.5 ${
+                                                    isSelected
+                                                        ? 'bg-white text-black border-white font-bold'
+                                                        : 'bg-[#3d3c3a] text-gray-300 border-white/10 hover:border-white/30'
+                                                }`}
+                                            >
+                                                <span
+                                                    className="w-2.5 h-2.5 rounded-full border border-black/20"
+                                                    style={{ backgroundColor: color.hex || color.name }}
+                                                />
+                                                {color.name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {sizeList.length > 0 && (
+                            <div className="mt-1">
+                                <span className="text-xs text-gray-400 block mb-1.5 font-medium">Choose Size:</span>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {sizeList.map((size: string, idx: number) => {
+                                        const isSelected = selectedSize === size;
+                                        return (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => handleSizeSelect(size)}
+                                                className={`text-xs px-3 py-1 rounded-lg border transition cursor-pointer ${
+                                                    isSelected
+                                                        ? 'bg-[#ffdd00] text-black border-[#ffdd00] font-bold'
+                                                        : 'bg-[#3d3c3a] text-gray-300 border-white/10 hover:border-white/30'
+                                                }`}
+                                            >
+                                                {size}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* "All characteristics" Button */}
+                        <div className="pt-2">
+                            <button
+                                type="button"
+                                onClick={scrollToSpecs}
+                                className="px-3.5 py-1.5 rounded-lg border border-gray-600 hover:border-gray-400 text-gray-300 hover:text-white text-xs font-semibold transition cursor-pointer inline-flex items-center gap-1"
+                            >
+                                All characteristics
                             </button>
                         </div>
-                        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderTop: 'none', padding: '24px', position: 'relative' }}>
-                            
-                            {/* ── DESCRIPTION CONTENT ── */}
-                            <div style={{ display: activeBottomTab === 'description' ? 'block' : 'none' }}>
-                                <div style={{ maxHeight: detailsExpanded ? 'none' : '600px', overflow: 'hidden', position: 'relative' }}>
-                                    <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#111', margin: '0 0 16px' }}>About this item</h3>
-                                {/* ── Highlights ── */}
-                                {product.highlights?.length > 0 && (
-                                    <div style={{ marginBottom: '20px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                                            <span style={{ width: '3px', height: '16px', background: 'var(--color-primary)', borderRadius: '2px', display: 'inline-block', flexShrink: 0 }} />
-                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#111', margin: 0 }}>Highlights</h3>
+                    </div>
+
+                    {/* ────────────────── COLUMN 3: BUY BOX & SIDEBAR CARDS (3 cols) ────────────────── */}
+                    <div className="lg:col-span-3 flex flex-col gap-3">
+
+                        {/* ── CARD 1: PRICE & ACTIONS ── */}
+                        <div className="bg-[#3d3c3a] rounded-2xl p-4 border border-white/5 shadow-md flex flex-col gap-3.5">
+                            {/* Price Header */}
+                            <div className="flex items-baseline justify-between gap-2">
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-2xl font-black text-[#00e676] tracking-tight">
+                                        ৳{discountedPrice.toLocaleString()}
+                                    </span>
+                                    <span className="text-[11px] font-bold text-[#00e676] px-1.5 py-0.5 bg-[#00e676]/15 rounded">
+                                        = Pay
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 text-xs text-gray-400 shrink-0">
+                                    {strikePrice && strikePrice > discountedPrice && (
+                                        <span className="line-through text-gray-400">
+                                            ৳{strikePrice.toLocaleString()}
+                                        </span>
+                                    )}
+                                    {discountPercent > 0 && (
+                                        <span className="text-xs font-bold text-green-400">
+                                            -{discountPercent}%
+                                        </span>
+                                    )}
+                                    <LuChevronRight size={14} className="text-gray-500" />
+                                </div>
+                            </div>
+
+                            {/* Quantity Selector */}
+                            <div className="flex items-center justify-between py-1 border-t border-white/5 text-xs text-gray-300">
+                                <span>Quantity</span>
+                                <div className="flex items-center bg-[#2a2927] rounded-lg border border-white/10 overflow-hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                        className="w-7 h-7 flex items-center justify-center hover:bg-white/10 text-gray-300 cursor-pointer"
+                                    >
+                                        <LuMinus size={12} />
+                                    </button>
+                                    <span className="w-8 text-center font-bold text-white text-xs">{quantity}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setQuantity(quantity + 1)}
+                                        className="w-7 h-7 flex items-center justify-center hover:bg-white/10 text-gray-300 cursor-pointer"
+                                    >
+                                        <LuPlus size={12} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Buttons Row: Buy now (Dark pill) + Add to cart (Yellow pill) */}
+                            <div className="flex items-center gap-2.5 pt-1">
+                                <button
+                                    type="button"
+                                    onClick={handleBuyNow}
+                                    disabled={displayStock === 0}
+                                    className="flex-1 py-3 px-3 rounded-xl bg-[#545351] hover:bg-[#666461] active:scale-98 text-white font-bold text-xs sm:text-sm text-center transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Buy now
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={handleAddToCart}
+                                    disabled={displayStock === 0}
+                                    className="flex-1 py-3 px-3 rounded-xl bg-[#ffdd00] hover:bg-[#ebd000] active:scale-98 text-black font-extrabold text-xs sm:text-sm text-center transition shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {addedToCart ? 'Added ✓' : displayStock === 0 ? 'Sold out' : 'Add to cart'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* ── CARD 2: PROMO CODE ── */}
+                        <div className="bg-[#3d3c3a] rounded-2xl p-3.5 border border-white/5 shadow-md flex items-center justify-between gap-2.5">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <span className="px-2 py-1 rounded bg-[#2a2927] border border-white/10 text-xs font-black text-white shrink-0">
+                                    -15%
+                                </span>
+                                <div className="leading-tight min-w-0">
+                                    <p className="text-xs font-bold text-white truncate">Promo code HOME15C</p>
+                                    <p className="text-[10.5px] text-gray-400">Until 10:10 pm · Limited time</p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={copyPromo}
+                                className="w-8 h-8 rounded-lg bg-[#2a2927] hover:bg-[#343331] text-gray-300 hover:text-white flex items-center justify-center transition shrink-0 cursor-pointer"
+                                title="Copy promo code"
+                            >
+                                {promoCopied ? <LuCheck size={14} className="text-green-400" /> : <LuCopy size={14} />}
+                            </button>
+                        </div>
+
+                        {/* ── CARD 3: LOG IN AND IT WILL BECOME CHEAPER ── */}
+                        <div className="bg-[#3d3c3a] rounded-2xl p-3.5 border border-white/5 shadow-md flex items-center justify-between gap-2.5">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-full bg-[#ff5226] flex items-center justify-center text-white shrink-0">
+                                    <span className="text-xs font-bold">👤</span>
+                                </div>
+                                <div className="leading-tight min-w-0">
+                                    <p className="text-xs font-bold text-white truncate">
+                                        {isAuthenticated ? `Welcome, ${user?.name?.split(' ')[0] || 'Member'}` : 'Log in and it will become cheaper'}
+                                    </p>
+                                    <p className="text-[10.5px] text-gray-400">
+                                        {isAuthenticated ? 'Loyalty member perks active' : 'More discounts in the account'}
+                                    </p>
+                                </div>
+                            </div>
+                            {!isAuthenticated ? (
+                                <Link
+                                    href="/login"
+                                    className="px-3 py-1.5 rounded-lg bg-[#545351] hover:bg-[#666461] text-white text-xs font-bold transition shrink-0"
+                                >
+                                    Login
+                                </Link>
+                            ) : (
+                                <span className="text-[10px] font-bold text-green-400 px-2 py-1 rounded bg-green-950/40 border border-green-800">
+                                    Active
+                                </span>
+                            )}
+                        </div>
+
+                        {/* ── CARD 4: MARKET DELIVERY ── */}
+                        <div className="bg-[#3d3c3a] rounded-2xl p-4 border border-white/5 shadow-md flex flex-col gap-2.5 text-xs">
+                            <h3 className="font-bold text-white text-sm">Market Delivery</h3>
+
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-gray-200">
+                                    <span className="w-2 h-2 rounded-full bg-[#00e676]" />
+                                    <span className="font-semibold">Tomorrow, on click ৳0</span>
+                                </div>
+                            </div>
+
+                            <p className="text-gray-400 text-[11px] leading-relaxed">
+                                {shipsFrom} · 15-30 minutes by courier at a convenient time
+                            </p>
+
+                            <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[11px] text-gray-300">
+                                <span>14 days for return</span>
+                                <Link href="/refund" className="text-gray-400 hover:text-white flex items-center gap-0.5">
+                                    About returns <LuChevronRight size={12} />
+                                </Link>
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-1 border-t border-white/5 text-[11px] text-gray-400">
+                                <LuMapPin size={14} className="text-gray-300 shrink-0" />
+                                <span className="flex-1 truncate">Please provide the address</span>
+                                <LuChevronRight size={13} className="shrink-0" />
+                            </div>
+                        </div>
+
+                        {/* ── CARD 5: SELLER / BRAND SHOP ── */}
+                        <div className="bg-[#3d3c3a] rounded-2xl p-4 border border-white/5 shadow-md flex flex-col gap-2.5">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-9 h-9 rounded-xl bg-[#ff5226] text-white flex items-center justify-center font-black text-sm">
+                                        M
+                                    </div>
+                                    <div className="leading-tight">
+                                        <div className="flex items-center gap-1">
+                                            <p className="font-bold text-white text-xs">Maxtop Mart</p>
+                                            <LuInfo size={12} className="text-gray-400" />
                                         </div>
-                                        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <p className="text-[10px] text-gray-400">Official Brand Shop</p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => toast('Shop favorited!', { icon: '❤️' })}
+                                    className="text-gray-400 hover:text-red-400 transition p-1 cursor-pointer"
+                                    title="Favorite Shop"
+                                >
+                                    <LuHeart size={16} />
+                                </button>
+                            </div>
+
+                            {/* Seller Stats */}
+                            <div className="flex items-center justify-between text-[11px] text-gray-300 pt-1 border-t border-white/5">
+                                <span className="flex items-center gap-1 font-semibold text-white">
+                                    <LuStar size={11} className="fill-[#ffb800] text-[#ffb800]" /> 4.8
+                                </span>
+                                <span>1.2M ratings</span>
+                                <span>11.7M orders</span>
+                                <span>636.5K subs</span>
+                            </div>
+                        </div>
+
+                        {/* ── CARD 6: PROMO AD BANNER ── */}
+                        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#d97706]/20 via-[#b45309]/15 to-[#1c1917] p-3.5 border border-white/5 flex items-center justify-between">
+                            <div className="leading-tight max-w-[65%]">
+                                <span className="text-[9px] uppercase tracking-wider text-amber-400 font-bold block mb-0.5">
+                                    Maxtop Lifestyle
+                                </span>
+                                <p className="text-xs font-bold text-white">Everything in order</p>
+                                <p className="text-[10px] text-gray-400 mt-0.5">Premium household essentials</p>
+                            </div>
+                            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-xl shrink-0">
+                                🏠
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                {/* ════════════ BOTTOM SECTION 1: "This might also work" CAROUSEL ════════════ */}
+                <div id="this-might-also-work" className="mt-12 pt-6 border-t border-white/10">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg sm:text-xl font-bold text-white">
+                            This might also work
+                        </h2>
+
+                        {relatedProducts.length > 4 && (
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => scrollRelated('left')}
+                                    className="w-8 h-8 rounded-full bg-[#3d3c3a] hover:bg-[#4d4c4a] text-white flex items-center justify-center transition cursor-pointer"
+                                    aria-label="Scroll left"
+                                >
+                                    <LuChevronLeft size={16} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => scrollRelated('right')}
+                                    className="w-8 h-8 rounded-full bg-[#3d3c3a] hover:bg-[#4d4c4a] text-white flex items-center justify-center transition cursor-pointer"
+                                    aria-label="Scroll right"
+                                >
+                                    <LuChevronRight size={16} />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Carousel Strip */}
+                    <div
+                        ref={relatedScrollRef}
+                        className="flex gap-3.5 overflow-x-auto pb-3 pt-1 no-scrollbar scroll-smooth"
+                    >
+                        {(relatedProducts.length > 0 ? relatedProducts : [1, 2, 3, 4, 5]).map((item: any, idx: number) => {
+                            const isReal = typeof item === 'object' && item._id;
+                            const cardSlug = isReal ? item.slug || item._id : slug;
+                            const cardName = isReal ? item.name : `${product.name} (Alternative ${idx + 1})`;
+                            const cardImage = isReal ? (item.thumbnail || item.images?.[0] || allImages[0]) : allImages[0];
+                            const cardPrice = isReal ? (item.price || discountedPrice) : discountedPrice;
+                            const cardBrand = isReal ? (item.brand || product.brand || 'MAXTOP') : (product.brand || 'MAXTOP');
+
+                            return (
+                                <Link
+                                    key={isReal ? item._id : idx}
+                                    href={`/product/${cardSlug}`}
+                                    className="relative flex-none w-[170px] sm:w-[200px] bg-[#3d3c3a] rounded-2xl p-2.5 border border-white/5 hover:border-white/20 transition-all duration-200 group flex flex-col shadow-sm"
+                                >
+                                    {/* Product Image Canvas */}
+                                    <div className="relative w-full aspect-square rounded-xl bg-gradient-to-b from-[#f3f4f6] to-[#e5e7eb] overflow-hidden p-2 flex items-center justify-center mb-2.5">
+                                        {/* Brand watermark top left */}
+                                        <span className="absolute top-2 left-2 text-[10px] font-bold text-gray-500 uppercase z-10">
+                                            {cardBrand}
+                                        </span>
+
+                                        {/* Heart icon top right */}
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (isReal) toggleWishlistItem(item._id);
+                                            }}
+                                            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-xs flex items-center justify-center text-white z-10 transition cursor-pointer"
+                                        >
+                                            <LuHeart size={12} />
+                                        </button>
+
+                                        <SmartImage
+                                            src={cardImage}
+                                            alt={cardName}
+                                            fill
+                                            sizes="200px"
+                                            className="object-contain p-2 group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                    </div>
+
+                                    {/* Card Info */}
+                                    <div className="flex-1 flex flex-col justify-between">
+                                        <p className="text-xs font-medium text-gray-200 line-clamp-2 leading-snug group-hover:text-white transition-colors">
+                                            {cardName}
+                                        </p>
+
+                                        <div className="mt-2 flex items-baseline gap-1.5">
+                                            <span className="text-sm font-extrabold text-[#00e676]">
+                                                ৳{cardPrice.toLocaleString()}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* ════════════ BOTTOM SECTION 2: TABS (Description & Reviews) ════════════ */}
+                <div id="product-specs-section" className="mt-12">
+                    <div className="flex border-b border-white/10 gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setActiveBottomTab('description')}
+                            className={`py-3 px-6 text-sm font-bold rounded-t-xl transition cursor-pointer ${
+                                activeBottomTab === 'description'
+                                    ? 'bg-[#3d3c3a] text-white border-t-2 border-[#ffdd00]'
+                                    : 'text-gray-400 hover:text-white'
+                            }`}
+                        >
+                            Characteristics & Description
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveBottomTab('reviews')}
+                            className={`py-3 px-6 text-sm font-bold rounded-t-xl transition cursor-pointer ${
+                                activeBottomTab === 'reviews'
+                                    ? 'bg-[#3d3c3a] text-white border-t-2 border-[#ffdd00]'
+                                    : 'text-gray-400 hover:text-white'
+                            }`}
+                        >
+                            Customer Reviews ({reviews.length || product.reviewCount || 0})
+                        </button>
+                    </div>
+
+                    <div className="bg-[#3d3c3a] rounded-b-2xl p-5 sm:p-7 border border-white/5 text-gray-300 text-sm">
+                        {activeBottomTab === 'description' ? (
+                            <div className="space-y-6">
+                                {/* Highlights */}
+                                {product.highlights?.length > 0 && (
+                                    <div>
+                                        <h3 className="text-base font-bold text-white mb-3 flex items-center gap-2">
+                                            <span className="w-1.5 h-4 bg-[#ffdd00] rounded-sm" /> Product Highlights
+                                        </h3>
+                                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
                                             {product.highlights.map((h: string, i: number) => (
-                                                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: '#444', lineHeight: 1.5 }}>
-                                                    <LuCircleCheck size={14} style={{ color: 'var(--color-primary)', flexShrink: 0, marginTop: '2px' }} />
+                                                <li key={i} className="flex items-start gap-2 text-gray-300">
+                                                    <LuCircleCheck size={16} className="text-[#00e676] shrink-0 mt-0.5" />
                                                     <span>{h}</span>
                                                 </li>
                                             ))}
                                         </ul>
                                     </div>
                                 )}
-                                {/* ── Specifications (Daraz-style) ── */}
-                                {hasSpecsSection && (
-                                    <div style={{ marginBottom: '20px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                                            <span style={{ width: '3px', height: '16px', background: 'var(--color-primary)', borderRadius: '2px', display: 'inline-block', flexShrink: 0 }} />
-                                            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#111', margin: 0 }}>Specifications</h3>
-                                        </div>
 
-                                        {keySpecs.length > 0 && (
-                                            <div style={{ border: '1px solid #e5e7eb', borderRadius: '6px', overflow: 'hidden', marginBottom: insideTheBoxItems.length > 0 ? '16px' : 0 }}>
-                                                {keySpecs.map((spec, i) => (
-                                                    <div key={spec.label} style={{ display: 'flex', fontSize: '13px', borderBottom: i < keySpecs.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
-                                                        <span style={{ flex: '0 0 32%', padding: '10px 14px', background: '#f8f9fa', fontWeight: 600, color: '#555', borderRight: '1px solid #f0f0f0' }}>{spec.label}</span>
-                                                        <span style={{ flex: 1, padding: '10px 14px', color: '#374151' }}>{spec.value}</span>
-                                                    </div>
-                                                ))}
+                                {/* Full Specifications Table */}
+                                <div>
+                                    <h3 className="text-base font-bold text-white mb-3 flex items-center gap-2">
+                                        <span className="w-1.5 h-4 bg-[#ffdd00] rounded-sm" /> Full Specifications
+                                    </h3>
+                                    <div className="rounded-xl overflow-hidden border border-white/10">
+                                        {[
+                                            { label: 'Market Article', val: marketArticle },
+                                            { label: 'Brand', val: product.brand || 'MAXTOP' },
+                                            { label: 'Model', val: product.model || product.sku || '-' },
+                                            { label: 'Category', val: product.category?.name || 'General' },
+                                            { label: 'Design / Material', val: designText },
+                                            { label: 'Color Options', val: colorSwatches.map((c: any) => c.name).join(', ') || colorText },
+                                            { label: 'Dimensions (LxWxH)', val: dimensionsText },
+                                            { label: 'Weight / Height', val: maxHeightText },
+                                            { label: 'Stock Status', val: displayStock > 0 ? `${displayStock} available` : 'Out of Stock' },
+                                        ].map((row, i) => (
+                                            <div
+                                                key={row.label}
+                                                className={`flex text-xs sm:text-sm py-2.5 px-4 ${
+                                                    i % 2 === 0 ? 'bg-[#333230]' : 'bg-[#3d3c3a]'
+                                                }`}
+                                            >
+                                                <span className="w-40 sm:w-56 text-gray-400 font-medium shrink-0">{row.label}</span>
+                                                <span className="text-white font-semibold flex-1">{row.val}</span>
                                             </div>
-                                        )}
+                                        ))}
+                                    </div>
+                                </div>
 
-                                        {/* Inside the Box */}
-                                        {insideTheBoxItems.length > 0 && (
-                                            <div>
-                                                <p style={{ fontSize: '12px', fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px' }}>What's in the Box</p>
-                                                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                                    {insideTheBoxItems.map((item, i) => (
-                                                        <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: '#444', lineHeight: 1.5 }}>
-                                                            <LuCircleCheck size={14} style={{ color: 'var(--color-primary)', flexShrink: 0, marginTop: '2px' }} />
-                                                            <span>{item}</span>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
+                                {/* Rich Description */}
+                                {product.description && (
+                                    <div className="pt-2">
+                                        <h3 className="text-base font-bold text-white mb-3 flex items-center gap-2">
+                                            <span className="w-1.5 h-4 bg-[#ffdd00] rounded-sm" /> Overview
+                                        </h3>
+                                        <div
+                                            className="text-gray-300 leading-relaxed text-sm prose prose-invert max-w-none"
+                                            dangerouslySetInnerHTML={{ __html: product.description }}
+                                        />
                                     </div>
                                 )}
-
-                                {/* ── Description ── */}
-                                {product.description ? (
-                                    <div style={{ fontSize: '14px', color: '#444', lineHeight: 1.8 }} dangerouslySetInnerHTML={{ __html: product.description }} />
-                                ) : (
-                                    !hasSpecsSection && <p style={{ fontSize: '13px', color: '#aaa', textAlign: 'center', padding: '20px 0' }}>No description available.</p>
-                                )}
-
-                                {/* fade overlay when collapsed */}
-                                {!detailsExpanded && (
-                                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '90px', background: 'linear-gradient(to bottom, rgba(255,255,255,0), #fff)', pointerEvents: 'none' }} />
-                                )}
                             </div>
-                            {(hasSpecsSection || product.description) && (
-                                <div style={{ textAlign: 'center', marginTop: '12px' }}>
-                                    <button onClick={() => setDetailsExpanded(v => !v)}
-                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#fff', border: '1px solid var(--color-primary)', color: 'var(--color-primary)', fontWeight: 700, fontSize: '13px', cursor: 'pointer', borderRadius: '4px', padding: '8px 28px' }}>
-                                        {detailsExpanded ? 'VIEW LESS' : 'VIEW MORE'} {detailsExpanded ? <LuChevronUp size={15} /> : <LuChevronDown size={15} />}
-                                    </button>
-                                </div>
-                            )}
-                            </div>
-                            
-                            {/* ── REVIEWS CONTENT ── */}
-                            <div style={{ display: activeBottomTab === 'reviews' ? 'block' : 'none' }}>
-                                <div style={{ padding: '0 0 14px', borderBottom: '1px solid #f0f0f0' }}>
-                                    <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#111', margin: 0 }}>Ratings &amp; Reviews of {product.name}</h2>
-                                </div>
-                                <div style={{ padding: '18px 0' }}>
-                            {/* Average + breakdown */}
-                            {(() => {
-                                const avg = reviews.length > 0 ? reviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / reviews.length : (product.rating || 0);
-                                const totalCount = reviews.length || product.reviewCount || 0;
-                                return (
-                                    <div className="pd-rating-summary" style={{ display: 'flex', alignItems: 'center', gap: '32px', marginBottom: '20px', paddingBottom: '18px', borderBottom: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
-                                        <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', justifyContent: 'center' }}>
-                                                <span style={{ fontSize: '44px', fontWeight: 800, color: 'var(--color-primary)', lineHeight: 1 }}>{avg.toFixed(1)}</span>
-                                                <span style={{ fontSize: '16px', color: '#9ca3af', fontWeight: 600 }}>/5</span>
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '2px', marginTop: '7px', justifyContent: 'center' }}>
-                                                {[1,2,3,4,5].map(s => <LuStar key={s} size={16} style={{ color: '#f59e0b', fill: s <= Math.round(avg) ? '#f59e0b' : 'none' }} />)}
-                                            </div>
-                                            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '6px' }}>{totalCount} Rating{totalCount !== 1 ? 's' : ''}</div>
-                                        </div>
-                                        <div style={{ flex: 1, minWidth: '200px' }}>
-                                            {[5,4,3,2,1].map(star => {
-                                                const count = reviews.length > 0
-                                                    ? reviews.filter((r: any) => r.rating === star).length
-                                                    : (product.ratingBreakdown?.[star] || 0);
-                                                const denom = reviews.length || product.reviewCount || 1;
-                                                const pct = (count / denom) * 100;
-                                                return (
-                                                    <div key={star} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
-                                                        <span style={{ fontSize: '12px', color: '#9ca3af', width: '10px' }}>{star}</span>
-                                                        <LuStar size={12} style={{ color: '#f59e0b', fill: '#f59e0b', flexShrink: 0 }} />
-                                                        <div style={{ flex: 1, height: '8px', background: '#f0f0f0', borderRadius: '4px', overflow: 'hidden' }}>
-                                                            <div style={{ width: `${pct}%`, height: '100%', background: '#f59e0b', borderRadius: '4px' }} />
-                                                        </div>
-                                                        <span style={{ fontSize: '12px', color: '#9ca3af', width: '24px', textAlign: 'right' }}>{count}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                );
-                            })()}
-
-                            {/* Write Review */}
-                            <div style={{ marginBottom: '18px', padding: '14px', background: '#fafafa', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
-                                <p style={{ fontSize: '14px', fontWeight: 700, color: '#111', marginBottom: '10px' }}>Write a Review</p>
-                                {isAuthenticated ? (
+                        ) : (
+                            /* Reviews Tab */
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between pb-4 border-b border-white/10">
                                     <div>
-                                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', marginBottom: '10px' }}>
-                                            {[1,2,3,4,5].map(star => (
-                                                <button key={star} type="button" onClick={() => setCmtRating(star)} onMouseEnter={() => setCmtHoverRating(star)} onMouseLeave={() => setCmtHoverRating(0)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}>
-                                                    <LuStar size={22} style={{ color: '#f59e0b', fill: star <= (cmtHoverRating || cmtRating) ? '#f59e0b' : 'none', transition: 'fill 0.15s' }} />
+                                        <h3 className="text-base font-bold text-white">Ratings & Reviews</h3>
+                                        <p className="text-xs text-gray-400">Feedback from verified customers</p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-3xl font-black text-white">
+                                            {(product.rating || 4.8).toFixed(1)}
+                                        </span>
+                                        <div className="flex gap-0.5 text-[#ffb800]">
+                                            {[1, 2, 3, 4, 5].map((s) => (
+                                                <LuStar key={s} size={14} className="fill-[#ffb800]" />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Write review */}
+                                {isAuthenticated ? (
+                                    <div className="bg-[#333230] p-4 rounded-xl border border-white/10 space-y-3">
+                                        <p className="text-xs font-bold text-white">Write a Review</p>
+                                        <div className="flex items-center gap-1 text-[#ffb800]">
+                                            {[1, 2, 3, 4, 5].map((s) => (
+                                                <button
+                                                    key={s}
+                                                    type="button"
+                                                    onClick={() => setCmtRating(s)}
+                                                    onMouseEnter={() => setCmtHoverRating(s)}
+                                                    onMouseLeave={() => setCmtHoverRating(0)}
+                                                    className="p-1 cursor-pointer"
+                                                >
+                                                    <LuStar
+                                                        size={20}
+                                                        className={s <= (cmtHoverRating || cmtRating) ? 'fill-[#ffb800] text-[#ffb800]' : 'text-gray-600'}
+                                                    />
                                                 </button>
                                             ))}
-                                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#f59e0b', marginLeft: '6px' }}>{cmtRating}/5</span>
+                                            <span className="text-xs font-bold text-gray-300 ml-2">{cmtRating}/5</span>
                                         </div>
-                                        <textarea value={cmtText} onChange={(e) => setCmtText(e.target.value)} placeholder="Share your experience..." rows={3}
-                                            style={{ width: '100%', padding: '9px 11px', border: '1.5px solid #e5e7eb', borderRadius: '6px', fontSize: '13px', outline: 'none', resize: 'vertical', background: '#fff', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                                            onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'} onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                                        <textarea
+                                            value={cmtText}
+                                            onChange={(e) => setCmtText(e.target.value)}
+                                            rows={3}
+                                            placeholder="Share your experience with this item..."
+                                            className="w-full bg-[#2a2927] border border-white/10 rounded-lg p-2.5 text-xs text-white placeholder-gray-500 outline-none focus:border-[#ffdd00]"
                                         />
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
-                                            {cmtSuccess && <span style={{ fontSize: '12px', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '4px' }}><LuCircleCheck size={12} /> Review submitted!</span>}
-                                            <button onClick={async () => { if (!cmtText.trim()) return; setCmtSubmitting(true); try { await createReviewMutation({ product: product._id, rating: cmtRating, comment: cmtText.trim() }).unwrap(); setCmtText(''); setCmtRating(5); setCmtSuccess(true); setTimeout(() => setCmtSuccess(false), 3000); } catch (err: any) { alert(err?.data?.message || 'Failed to submit'); } setCmtSubmitting(false); }} disabled={cmtSubmitting || !cmtText.trim()}
-                                                style={{ marginLeft: 'auto', padding: '7px 16px', borderRadius: '6px', border: 'none', background: cmtSubmitting || !cmtText.trim() ? '#e5e7eb' : 'var(--color-primary)', color: cmtSubmitting || !cmtText.trim() ? '#9ca3af' : '#fff', fontSize: '13px', fontWeight: 700, cursor: cmtSubmitting || !cmtText.trim() ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                <LuSend size={12} /> {cmtSubmitting ? 'Submitting...' : 'Submit'}
+                                        <div className="flex justify-end">
+                                            <button
+                                                type="button"
+                                                disabled={cmtSubmitting || !cmtText.trim()}
+                                                onClick={async () => {
+                                                    if (!cmtText.trim()) return;
+                                                    setCmtSubmitting(true);
+                                                    try {
+                                                        await createReviewMutation({
+                                                            product: product._id,
+                                                            rating: cmtRating,
+                                                            comment: cmtText.trim()
+                                                        }).unwrap();
+                                                        setCmtText('');
+                                                        toast.success('Review submitted successfully!');
+                                                    } catch (err: any) {
+                                                        toast.error(err?.data?.message || 'Failed to submit review');
+                                                    } finally {
+                                                        setCmtSubmitting(false);
+                                                    }
+                                                }}
+                                                className="px-4 py-2 rounded-lg bg-[#ffdd00] hover:bg-[#ebd000] text-black font-bold text-xs transition cursor-pointer disabled:opacity-50"
+                                            >
+                                                {cmtSubmitting ? 'Submitting...' : 'Submit Review'}
                                             </button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div style={{ textAlign: 'center', padding: '10px 0' }}>
-                                        <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px' }}>Please login to write a review</p>
-                                        <button onClick={() => router.push('/login')} style={{ padding: '7px 20px', borderRadius: '6px', border: '2px solid var(--color-primary)', background: 'transparent', color: 'var(--color-primary)', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>Login to Review</button>
+                                    <div className="text-center py-4 bg-[#333230] rounded-xl border border-white/10">
+                                        <p className="text-xs text-gray-400 mb-2">Please log in to write a review</p>
+                                        <Link href="/login" className="inline-block px-4 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold">
+                                            Login
+                                        </Link>
                                     </div>
                                 )}
-                            </div>
 
-                            {/* Review list */}
-                            {reviews.length > 0 ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                                    {reviews.map((r: any, i: number) => (
-                                        <div key={i} style={{ padding: '16px 0', borderBottom: i < reviews.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '7px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'var(--color-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, flexShrink: 0 }}>
-                                                        {(r.userName || r.user?.firstName || 'A').charAt(0).toUpperCase()}
-                                                    </div>
-                                                    <div>
-                                                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#111' }}>{r.userName || `${r.user?.firstName || ''} ${r.user?.lastName || ''}`.trim() || 'Anonymous'}</span>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-                                                            <div style={{ display: 'flex', gap: '2px' }}>
-                                                                {[1,2,3,4,5].map(s => <LuStar key={s} size={11} style={{ color: s <= r.rating ? '#f59e0b' : '#d1d5db', fill: s <= r.rating ? '#f59e0b' : 'none' }} />)}
-                                                            </div>
-                                                            {r.isVerifiedPurchase && (
-                                                                <span style={{ fontSize: '11px', color: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
-                                                                    <LuCircleCheck size={11} /> Verified Purchase
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
+                                {/* Reviews List */}
+                                <div className="space-y-3">
+                                    {reviews.length > 0 ? (
+                                        reviews.map((r: any, idx: number) => (
+                                            <div key={idx} className="p-3.5 bg-[#333230] rounded-xl border border-white/5 space-y-1.5">
+                                                <div className="flex items-center justify-between text-xs">
+                                                    <span className="font-bold text-white">
+                                                        {r.userName || r.user?.firstName || 'Verified Customer'}
+                                                    </span>
+                                                    <span className="text-gray-500 text-[11px]">
+                                                        {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'Recent'}
+                                                    </span>
                                                 </div>
-                                                <span style={{ fontSize: '11px', color: '#9ca3af' }}>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : ''}</span>
-                                            </div>
-                                            {r.comment && <p style={{ fontSize: '13px', color: '#555', lineHeight: 1.6, margin: '6px 0 0', paddingLeft: '44px' }}>{r.comment}</p>}
-                                            {/* review images */}
-                                            {r.images?.length > 0 && (
-                                                <div style={{ display: 'flex', gap: '8px', marginTop: '8px', paddingLeft: '44px', flexWrap: 'wrap' }}>
-                                                    {r.images.map((img: string, ii: number) => (
-                                                        <SmartImage key={ii} src={img} alt="review" width={60} height={60} style={{ objectFit: 'cover', borderRadius: '6px', border: '1px solid #e5e7eb' }} />
+                                                <div className="flex gap-0.5 text-[#ffb800]">
+                                                    {[1, 2, 3, 4, 5].map((s) => (
+                                                        <LuStar
+                                                            key={s}
+                                                            size={11}
+                                                            className={s <= r.rating ? 'fill-[#ffb800]' : 'text-gray-600'}
+                                                        />
                                                     ))}
                                                 </div>
-                                            )}
+                                                <p className="text-xs text-gray-300 leading-relaxed">{r.comment}</p>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-center py-6 text-xs text-gray-500">No reviews yet. Be the first to review!</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+            </div>
+
+            {/* ════════════ FULLSCREEN ZOOM MODAL ════════════ */}
+            {isFullscreen && (
+                <div
+                    className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center p-4"
+                    onClick={() => { setIsFullscreen(false); setZoomLevel(1); setPanOffset({ x: 0, y: 0 }); }}
+                >
+                    <button
+                        onClick={() => { setIsFullscreen(false); setZoomLevel(1); setPanOffset({ x: 0, y: 0 }); }}
+                        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer z-20"
+                    >
+                        <LuX size={22} />
+                    </button>
+
+                    <div className="relative w-full max-w-4xl max-h-[85vh] aspect-square flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                        <SmartImage
+                            src={allImages[selectedImage] || allImages[0]}
+                            alt={product.name}
+                            fill
+                            sizes="100vw"
+                            className="object-contain"
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* ════════════ SHARE POPUP MODAL ════════════ */}
+            {showSharePopup && (() => {
+                const productUrl = typeof window !== 'undefined' ? window.location.href : '';
+                const shareText = `${product.name} - ৳${discountedPrice}`;
+                const shareLinks = [
+                    { name: 'Facebook', icon: FaFacebookF, color: '#1877F2', url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(productUrl)}` },
+                    { name: 'WhatsApp', icon: FaWhatsapp, color: '#25D366', url: `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + productUrl)}` },
+                    { name: 'Messenger', icon: FaFacebookMessenger, color: '#0078FF', url: `https://www.facebook.com/dialog/send?link=${encodeURIComponent(productUrl)}` },
+                    { name: 'X', icon: FaXTwitter, color: '#000000', url: `https://twitter.com/intent/tweet?url=${encodeURIComponent(productUrl)}` },
+                    { name: 'Telegram', icon: FaTelegramPlane, color: '#0088cc', url: `https://t.me/share/url?url=${encodeURIComponent(productUrl)}` },
+                    { name: 'LinkedIn', icon: FaLinkedinIn, color: '#0A66C2', url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(productUrl)}` },
+                    { name: 'Email', icon: FaEnvelope, color: '#555555', url: `mailto:?subject=${encodeURIComponent(product.name)}&body=${encodeURIComponent(productUrl)}` },
+                ];
+
+                return (
+                    <div
+                        className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4 backdrop-blur-xs"
+                        onClick={() => setShowSharePopup(false)}
+                    >
+                        <div
+                            className="bg-[#3d3c3a] text-white rounded-2xl w-full max-w-md overflow-hidden border border-white/10 shadow-2xl"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between p-4 border-b border-white/10">
+                                <h3 className="text-sm font-bold truncate">Share this product</h3>
+                                <button
+                                    onClick={() => setShowSharePopup(false)}
+                                    className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition cursor-pointer"
+                                >
+                                    <LuX size={16} />
+                                </button>
+                            </div>
+
+                            <div className="p-4 grid grid-cols-4 gap-3">
+                                {shareLinks.map((item) => (
+                                    <a
+                                        key={item.name}
+                                        href={item.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-white/5 transition"
+                                    >
+                                        <div
+                                            className="w-10 h-10 rounded-full flex items-center justify-center text-white shadow"
+                                            style={{ backgroundColor: item.color }}
+                                        >
+                                            <item.icon size={16} />
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                                    <LuStar size={28} style={{ color: '#e5e7eb', display: 'block', margin: '0 auto 8px' }} />
-                                    <p style={{ fontSize: '14px', color: '#6b7280', fontWeight: 500 }}>No reviews yet</p>
-                                    <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '3px' }}>Be the first to review this product</p>
-                                </div>
-                            )}
+                                        <span className="text-[10px] text-gray-300 font-medium">{item.name}</span>
+                                    </a>
+                                ))}
+                            </div>
+
+                            <div className="p-4 border-t border-white/10 bg-[#343331]">
+                                <div className="flex items-center bg-[#2a2927] rounded-xl overflow-hidden border border-white/10 p-1">
+                                    <input
+                                        type="text"
+                                        value={productUrl}
+                                        readOnly
+                                        className="flex-1 bg-transparent px-3 text-xs text-gray-300 outline-none truncate"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(productUrl);
+                                            setShareLinkCopied(true);
+                                            toast.success('Link copied to clipboard!');
+                                            setTimeout(() => setShareLinkCopied(false), 2000);
+                                        }}
+                                        className="px-3.5 py-1.5 bg-[#ffdd00] hover:bg-[#ebd000] text-black text-xs font-bold rounded-lg transition cursor-pointer"
+                                    >
+                                        {shareLinkCopied ? 'Copied!' : 'Copy Link'}
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    {/* ════ BELOW: You may also like ════ */}
-                    {relatedProducts.length > 0 && (
-                        <div style={{ marginTop: '40px', background: '#fff', padding: '16px 0' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                                <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{ width: '3px', height: '16px', background: 'var(--color-primary)', borderRadius: '2px', display: 'inline-block', flexShrink: 0 }} />
-                                        <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#111', margin: 0 }}>You may also like</h2>
-                                    </div>
-                                    {product?.category?.name && <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px', paddingLeft: '11px' }}>More from <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{product.category.name}</span></p>}
-                                </div>
-                                {product?.category?._id && (
-                                    <Link href={`/products?category=${product.category._id}`} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600, color: 'var(--color-primary)', background: 'color-mix(in srgb, var(--color-primary) 8%, transparent)', padding: '5px 12px', borderRadius: '9999px', textDecoration: 'none' }}>
-                                        View All <LuChevronRight size={14} />
-                                    </Link>
-                                )}
-                            </div>
-                            <div className="pd-related-grid grid grid-cols-4 gap-2 overflow-hidden">
-                                {relatedProducts.slice(0, 4).map((item: any) => (
-                                    <NewProductCard key={item._id} product={{ id: item._id, slug: item.slug, name: item.name, image: item.thumbnail, price: item.discount > 0 ? item.price - (item.price * item.discount) / 100 : item.price, originalPrice: item.originalPrice, mrp: item.originalPrice || item.price, discount: item.discount, offerStartDate: item.offerStartDate, offerEndDate: item.offerEndDate, rating: item.rating, reviews: item.reviewCount, categoryName: item.category?.name || product?.category?.name, priceType: item.priceType, likeCount: item.likeCount || 0, commentCount: item.commentCount || 0, shareCount: item.shareCount || 0, viewCount: item.viewCount || 0, reviewCount: item.reviewCount || 0, variants: item.variants }} />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── Rating Modal ── */}
-                    {showRatingModal && (
-                        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setShowRatingModal(false)}>
-                            <div style={{ background: '#fff', borderRadius: '6px', maxWidth: '480px', width: '100%', maxHeight: '80vh', overflowY: 'auto', padding: '22px', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-                                <button onClick={() => setShowRatingModal(false)} style={{ position: 'absolute', top: '12px', right: '12px', width: '30px', height: '30px', borderRadius: '50%', background: '#f3f4f6', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <LuX size={15} />
-                                </button>
-                                <h3 style={{ fontSize: '17px', fontWeight: 700, margin: '0 0 14px', color: '#111' }}>Ratings & Reviews</h3>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px', padding: '14px', background: '#f9fafb', borderRadius: '6px' }}>
-                                    <div style={{ textAlign: 'center' }}>
-                                        <div style={{ fontSize: '34px', fontWeight: 800, color: '#111' }}>{product.rating?.toFixed(1) || '0.0'}</div>
-                                        <div style={{ display: 'flex', gap: '2px', justifyContent: 'center', marginTop: '4px' }}>
-                                            {[1,2,3,4,5].map(star => <LuStar key={star} size={13} style={{ color: '#f59e0b', fill: star <= Math.round(product.rating || 0) ? '#f59e0b' : 'none' }} />)}
-                                        </div>
-                                        <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '3px' }}>{reviews.length || product.reviewCount || 0} ratings</div>
-                                    </div>
-                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        {[5,4,3,2,1].map(star => {
-                                            const count = reviews.filter((r: any) => r.rating === star).length;
-                                            const pct = Math.round((count / (reviews.length || 1)) * 100);
-                                            return (
-                                                <div key={star} style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px' }}>
-                                                    <span style={{ width: '12px', fontWeight: 600, color: '#555' }}>{star}</span>
-                                                    <LuStar size={10} style={{ color: '#f59e0b', fill: '#f59e0b' }} />
-                                                    <div style={{ flex: 1, height: '7px', background: '#e5e7eb', borderRadius: '3px', overflow: 'hidden' }}>
-                                                        <div style={{ width: `${pct}%`, height: '100%', background: '#f59e0b', borderRadius: '3px' }} />
-                                                    </div>
-                                                    <span style={{ width: '28px', textAlign: 'right', color: '#9ca3af', fontSize: '11px' }}>{count}</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    {reviews.length > 0 ? reviews.map((review: any, idx: number) => (
-                                        <div key={idx} style={{ padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
-                                            <div style={{ display: 'flex', gap: '2px', marginBottom: '5px' }}>
-                                                {[1,2,3,4,5].map(star => <LuStar key={star} size={10} style={{ color: '#f59e0b', fill: star <= (review.rating || 0) ? '#f59e0b' : 'none' }} />)}
-                                            </div>
-                                            {review.comment && <p style={{ fontSize: '12px', color: '#555', margin: 0, lineHeight: 1.6 }}>{review.comment}</p>}
-                                        </div>
-                                    )) : (
-                                        <div style={{ textAlign: 'center', padding: '18px', color: '#9ca3af', fontSize: '13px' }}>No reviews yet. Be the first to review!</div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    <style>{`
-                div:hover > .zoom-indicator { opacity: 1 !important; }
-                div:hover > .discount-badge { opacity: 1 !important; }
-                .pd-thumb-strip::-webkit-scrollbar { display: none; }
-                .pd-thumb-strip { -ms-overflow-style: none; scrollbar-width: none; }
-                .pd-breadcrumb::-webkit-scrollbar { display: none; }
-
-                /* Tablet: gallery on top, info + delivery side-by-side */
-                @media (max-width: 1023px) {
-                    .pd-top-grid { flex-wrap: wrap !important; }
-                    .pd-col-gallery { flex: 0 0 100% !important; max-width: 100% !important; }
-                    .pd-col-info { flex: 1 1 55% !important; max-width: none !important; }
-                    .pd-col-delivery { flex: 1 1 40% !important; max-width: none !important; }
-                }
-                /* Mobile: full stack */
-                @media (max-width: 767px) {
-                    .pd-top-grid { flex-direction: column !important; gap: 10px !important; }
-                    .pd-col-gallery, .pd-col-info, .pd-col-delivery { flex: 0 0 100% !important; max-width: 100% !important; width: 100% !important; }
-                    .pd-breadcrumb { font-size: 11px !important; gap: 4px !important; -ms-overflow-style: none !important; scrollbar-width: none !important; }
-                    .pd-stats-row { gap: 8px !important; flex-wrap: wrap !important; font-size: 12px !important; }
-                    .pd-related-grid { grid-template-columns: repeat(2, 1fr) !important; }
-                    .pd-title { font-size: 16px !important; }
-                    .pd-price { font-size: 22px !important; }
-                    .pd-rating-summary { gap: 18px !important; }
-                    .pd-zoom-thumbs { display: none !important; }
-                }
-                @media (max-width: 480px) {
-                    .pd-rating-summary { flex-direction: column !important; align-items: stretch !important; }
-                }
-            `}</style>
-
-                    {/* ── Share Popup ── */}
-                    {showSharePopup && (() => {
-                        const productUrl = typeof window !== 'undefined' ? window.location.href : '';
-                        const shareText = `${product.name} - Tk.${product.price}`;
-                        const shareLinks = [
-                            { name: 'Facebook', icon: FaFacebookF, color: '#1877F2', url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(productUrl)}&quote=${encodeURIComponent(shareText)}` },
-                            { name: 'WhatsApp', icon: FaWhatsapp, color: '#25D366', url: `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + '\n' + productUrl)}` },
-                            { name: 'Messenger', icon: FaFacebookMessenger, color: '#0078FF', url: `https://www.facebook.com/dialog/send?link=${encodeURIComponent(productUrl)}&app_id=966242223397117&redirect_uri=${encodeURIComponent(productUrl)}` },
-                            { name: 'X', icon: FaXTwitter, color: '#000000', url: `https://twitter.com/intent/tweet?url=${encodeURIComponent(productUrl)}&text=${encodeURIComponent(shareText)}` },
-                            { name: 'Telegram', icon: FaTelegramPlane, color: '#0088cc', url: `https://t.me/share/url?url=${encodeURIComponent(productUrl)}&text=${encodeURIComponent(shareText)}` },
-                            { name: 'LinkedIn', icon: FaLinkedinIn, color: '#0A66C2', url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(productUrl)}` },
-                            { name: 'Pinterest', icon: FaPinterestP, color: '#E60023', url: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(productUrl)}&media=${encodeURIComponent(allImages[0])}&description=${encodeURIComponent(shareText)}` },
-                            { name: 'Instagram', icon: FaInstagram, color: '#E1306C', url: `https://www.instagram.com/` },
-                            { name: 'TikTok', icon: FaTiktok, color: '#000000', url: `https://www.tiktok.com/` },
-                            { name: 'Email', icon: FaEnvelope, color: '#555555', url: `mailto:?subject=${encodeURIComponent(product.name)}&body=${encodeURIComponent(shareText + '\n\n' + productUrl)}` },
-                        ];
-                        return (
-                            <div className='fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4' onClick={() => setShowSharePopup(false)}>
-                                <div className='bg-white rounded-md w-full max-w-[600px] max-h-[88vh] flex flex-col overflow-hidden shadow-2xl' onClick={(e) => e.stopPropagation()}>
-                                    <div className='flex items-center justify-between px-4 py-2.5 border-b border-gray-200 shrink-0'>
-                                        <h3 className='text-[15px] font-bold text-gray-900 truncate pr-4'>{product.name}</h3>
-                                        <button onClick={() => setShowSharePopup(false)} className='w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 shrink-0'><LuX size={18} /></button>
-                                    </div>
-                                    <div className='shrink-0 border-b border-gray-200'>
-                                        <div className='relative w-full h-[240px] bg-gray-50'>
-                                            <SmartImage src={allImages[0]} alt={product.name} fill sizes="600px" className='object-contain' />
-                                        </div>
-                                    </div>
-                                    <div className='px-4 pt-3 pb-1'><p className='text-[13px] font-bold text-gray-900'>Share With</p></div>
-                                    <div className='px-4 py-2 overflow-y-auto flex-1'>
-                                        <div className='grid grid-cols-5 gap-3'>
-                                            {shareLinks.map((link) => (
-                                                <a key={link.name} href={link.url} target='_blank' rel='noopener noreferrer' className='flex flex-col items-center gap-1.5 py-2 rounded-md hover:bg-gray-50 transition-colors'>
-                                                    <div className='w-10 h-10 rounded-full flex items-center justify-center text-white' style={{ background: link.color }}>
-                                                        <link.icon size={16} />
-                                                    </div>
-                                                    <span className='text-[10px] text-gray-500 font-medium'>{link.name}</span>
-                                                </a>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className='px-4 py-3 border-t border-gray-100 shrink-0'>
-                                        <div className='flex items-center bg-gray-100 rounded-md overflow-hidden'>
-                                            <input type='text' value={productUrl} readOnly className='flex-1 bg-transparent text-xs text-gray-600 outline-none px-3 py-2.5 truncate' />
-                                            <button onClick={() => { navigator.clipboard.writeText(productUrl); setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); }} className='px-4 py-2.5 text-white text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap' style={{ background: 'var(--color-primary)' }}>
-                                                {shareLinkCopied ? <><LuCircleCheck size={12} /> Copied!</> : <><LuCopy size={12} /> Copy</>}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })()}
-
-                    {/* ── Comments Modal ── */}
-                    {showCommentsModal && product && (
-                        <CommentsPopup productId={product._id} productName={product.name} productImage={allImages[0]} onClose={() => setShowCommentsModal(false)} />
-                    )}
-
-                    {/* ── Download Modal ── */}
-                    {showDownloadModal && (
-                        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }} onClick={() => setShowDownloadModal(false)}>
-                            <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '6px', padding: '20px', maxWidth: '560px', width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                                    <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#111', margin: 0, display: 'flex', alignItems: 'center', gap: '7px' }}>
-                                        <LuDownload size={15} /> Download Images
-                                    </h3>
-                                    <button onClick={() => setShowDownloadModal(false)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><LuX size={15} /></button>
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-                                    {allImages.map((img: string, idx: number) => (
-                                        <div key={idx} onClick={async () => { try { const res = await fetch(img); const blob = await res.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${product.name || 'product'}-image-${idx + 1}.jpg`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); } catch { window.open(img, '_blank'); } }}
-                                            style={{ aspectRatio: '1/1', borderRadius: '6px', overflow: 'hidden', cursor: 'pointer', border: '2px solid #e5e7eb', position: 'relative', transition: 'all 0.2s' }}
-                                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; (e.currentTarget.querySelector('.dl-overlay') as HTMLElement).style.opacity = '1'; }}
-                                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; (e.currentTarget.querySelector('.dl-overlay') as HTMLElement).style.opacity = '0'; }}>
-                                            <SmartImage src={img} alt={`Image ${idx + 1}`} fill sizes="150px" className="object-cover" />
-                                            <div className="dl-overlay" style={{ position: 'absolute', inset: 0, background: 'color-mix(in srgb, var(--color-primary) 50%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s' }}>
-                                                <LuDownload size={22} color="#fff" />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── Inquiry Modal ── */}
-                    {showInquiryModal && (
-                        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }} onClick={() => { setShowInquiryModal(false); setInquirySuccess(false); }}>
-                            <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '6px', padding: '20px', maxWidth: '460px', width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                    <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#111', margin: 0, display: 'flex', alignItems: 'center', gap: '7px' }}><LuMessageSquare size={15} /> Send Inquiry</h3>
-                                    <button onClick={() => { setShowInquiryModal(false); setInquirySuccess(false); }} style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><LuX size={15} /></button>
-                                </div>
-                                <div style={{ display: 'flex', gap: '10px', padding: '10px', background: '#f9fafb', borderRadius: '6px', marginBottom: '14px' }}>
-                                    <SmartImage src={product.thumbnail} alt={product.name} width={52} height={52} style={{ objectFit: 'cover', borderRadius: '6px', flexShrink: 0 }} />
-                                    <div>
-                                        <p style={{ fontSize: '13px', fontWeight: 600, color: '#111', margin: '0 0 3px', lineHeight: 1.3 }}>{product.name}</p>
-                                        <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-primary)', margin: 0 }}>৳{discountedPrice.toLocaleString()}</p>
-                                    </div>
-                                </div>
-                                {inquirySuccess ? (
-                                    <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                                        <LuCircleCheck size={44} color="var(--color-primary)" style={{ display: 'block', margin: '0 auto 10px' }} />
-                                        <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--color-primary)', marginBottom: '4px' }}>Inquiry Sent!</p>
-                                        <p style={{ fontSize: '13px', color: '#6b7280' }}>{"We'll get back to you soon."}</p>
-                                    </div>
-                                ) : (
-                                    <form onSubmit={async (e) => { e.preventDefault(); if (!inquiryName.trim() || !inquiryContact.trim() || !inquiryPhone.trim() || !inquiryMessage.trim()) return; setInquirySubmitting(true); try { await createInquiry({ product: product._id, name: inquiryName.trim(), phone: inquiryPhone.trim(), email: inquiryContact.trim(), message: inquiryMessage.trim() }).unwrap(); setInquirySuccess(true); setInquiryName(''); setInquiryContact(''); setInquiryPhone(''); setInquiryMessage(''); } catch (err) { console.error(err); } finally { setInquirySubmitting(false); } }}>
-                                        {[
-                                            { label: 'Your Name *', value: inquiryName, setter: setInquiryName, type: 'text', placeholder: 'Enter your name' },
-                                            { label: 'Email Address *', value: inquiryContact, setter: setInquiryContact, type: 'email', placeholder: 'name@example.com' },
-                                            { label: 'Phone Number *', value: inquiryPhone, setter: setInquiryPhone, type: 'tel', placeholder: '01XXXXXXXXX' },
-                                        ].map(({ label, value, setter, type, placeholder }) => (
-                                            <div key={label} style={{ marginBottom: '10px' }}>
-                                                <label style={{ fontSize: '12px', fontWeight: 600, color: '#555', display: 'block', marginBottom: '4px' }}>{label}</label>
-                                                <input value={value} onChange={(e) => setter(e.target.value)} placeholder={placeholder} required type={type}
-                                                    style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1.5px solid #e5e7eb', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
-                                                    onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'} onBlur={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
-                                                />
-                                            </div>
-                                        ))}
-                                        <div style={{ marginBottom: '14px' }}>
-                                            <label style={{ fontSize: '12px', fontWeight: 600, color: '#555', display: 'block', marginBottom: '4px' }}>Your Query *</label>
-                                            <textarea value={inquiryMessage} onChange={(e) => setInquiryMessage(e.target.value)} placeholder="Write your question..." required rows={4}
-                                                style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1.5px solid #e5e7eb', fontSize: '13px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                                                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'} onBlur={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
-                                            />
-                                        </div>
-                                        <button type="submit" disabled={inquirySubmitting}
-                                            style={{ width: '100%', padding: '10px', borderRadius: '6px', background: 'var(--color-primary)', color: '#fff', border: 'none', fontWeight: 700, fontSize: '13px', cursor: 'pointer', opacity: inquirySubmitting ? 0.7 : 1, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                            {inquirySubmitting ? 'Submitting...' : 'Submit Inquiry'}
-                                        </button>
-                                    </form>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </>
+                );
+            })()}
+        </div>
     );
 }
 
-// Compact sold-count formatter: 400000 → "400K", 1500000 → "1.5M".
 function formatCompact(n: number): string {
     if (!n || n < 1000) return String(n || 0);
     if (n < 1_000_000) {
@@ -1169,13 +1323,4 @@ function formatCompact(n: number): string {
     }
     const m = n / 1_000_000;
     return `${m % 1 === 0 ? m : m.toFixed(1)}M`;
-}
-
-function FiShareSvg({ isLiked, likeCount }: { isLiked: boolean; likeCount: number }) {
-    return (
-        <>
-            <LuHeart size={14} style={{ fill: isLiked ? '#ef4444' : 'none' }} />
-            <span>{likeCount}</span>
-        </>
-    );
 }

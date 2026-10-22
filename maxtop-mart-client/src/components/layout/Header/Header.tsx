@@ -38,9 +38,9 @@ const FIVE_STAR_HREF = '/products?sort=-rating';
 const NEW_IN_HREF = '/products?sort=-createdAt';
 
 /* Temu-style palette */
-const NAV_BG = '#4a1a7c';      // purple nav bar
-const TOPBAR_BG = '#161616';   // near-black utility bar
-const SEARCH_PRIMARY = '#1a1a1a'; // black search button + border
+const NAV_BG = '#ffffff';      // clean white nav bar (no colored bar)
+const TOPBAR_BG = '#f8f9fa';   // subtle clean utility bar
+const SEARCH_PRIMARY = '#ff5e00'; // brand search button
 
 const CategoryIcon: React.FC<{ icon?: string; size?: number; className?: string }> = ({ size = ICON_SIZE, className }) =>
     <LuTag size={size} strokeWidth={1.9} className={className} />;
@@ -275,7 +275,7 @@ const HeaderInner: React.FC = () => {
     const dashboardHref = user?.role === 'admin' || user?.role === 'superadmin' ? '/dashboard/admin' : '/dashboard/user';
     const supportHref = contactPhone ? `tel:${contactPhone}` : '/services';
 
-    const navLink = 'flex items-center gap-1.5 whitespace-nowrap text-[14px] font-medium text-white/90 transition-colors hover:text-white';
+    const navLink = 'flex items-center gap-1.5 whitespace-nowrap text-[14px] font-medium text-gray-700 transition-colors hover:text-[#fb7701]';
     const menuItem = 'flex items-center gap-2.5 px-4 py-2.5 text-[13.5px] text-gray-700 transition-colors hover:bg-purple-50 hover:text-[#4a1a7c]';
 
     const isActive = (href: string) => {
@@ -289,52 +289,52 @@ const HeaderInner: React.FC = () => {
 
     return (
         <header
-            className="sticky top-0 z-50 transition-shadow duration-300"
-            style={{ background: NAV_BG, boxShadow: scrolled ? '0 8px 30px -10px rgba(0,0,0,0.45)' : 'none' }}
+            className="sticky top-0 z-50 bg-white border-b border-gray-100 transition-shadow duration-300"
+            style={{ boxShadow: scrolled ? '0 4px 20px -5px rgba(0,0,0,0.08)' : 'none' }}
         >
-            {/* ───────── Top utility bar (black) ───────── */}
-            <div className="hidden md:block text-white" style={{ background: TOPBAR_BG }}>
-                <div className="container mx-auto px-4 flex items-center justify-between gap-6 py-1.5">
+            {/* ───────── Top utility bar (subtle clean light gray) ───────── */}
+            <div className="hidden md:block bg-[#f8f9fa] border-b border-gray-100 text-gray-600">
+                <div className="container mx-auto px-4 flex items-center justify-between gap-6 py-1">
                     <div className="flex items-center gap-7">
                         <Link href={NEW_IN_HREF} className="flex items-center gap-2 group">
-                            <LuTruck size={20} strokeWidth={1.8} className="text-[#fb7701]" />
+                            <LuTruck size={18} strokeWidth={1.8} className="text-[#fb7701]" />
                             <span className="leading-tight">
-                                <span className="flex items-center gap-1 text-[12.5px] font-semibold group-hover:underline">
-                                    Free shipping <LuChevronDown size={12} className="-rotate-90" />
+                                <span className="flex items-center gap-1 text-[12px] font-semibold text-gray-800 group-hover:underline">
+                                    Free shipping <LuChevronDown size={11} className="-rotate-90" />
                                 </span>
-                                <span className="block text-[10.5px] text-white/60">Min. order value ৳2000</span>
+                                <span className="block text-[10px] text-gray-500">Min. order value ৳2000</span>
                             </span>
                         </Link>
                         <div className="flex items-center gap-2">
-                            <LuShieldCheck size={20} strokeWidth={1.8} className="text-[#fb7701]" />
+                            <LuShieldCheck size={18} strokeWidth={1.8} className="text-[#fb7701]" />
                             <span className="leading-tight">
-                                <span className="block text-[12.5px] font-semibold">Delivery guarantee</span>
-                                <span className="block text-[10.5px] text-white/60">Refund for any issues</span>
+                                <span className="block text-[12px] font-semibold text-gray-800">Delivery guarantee</span>
+                                <span className="block text-[10px] text-gray-500">Refund for any issues</span>
                             </span>
                         </div>
                         <div className="hidden lg:flex items-center gap-2">
-                            <LuSmartphone size={20} strokeWidth={1.8} className="text-[#fb7701]" />
-                            <span className="text-[12.5px] font-semibold">Get the App</span>
+                            <LuSmartphone size={18} strokeWidth={1.8} className="text-[#fb7701]" />
+                            <span className="text-[12px] font-semibold text-gray-800">Get the App</span>
                         </div>
                     </div>
 
                     {/* Seller banner */}
                     <Link
                         href="/services"
-                        className="flex items-center gap-3 rounded-full bg-white/5 py-1 pl-4 pr-1 transition-colors hover:bg-white/10"
+                        className="flex items-center gap-2 rounded-full bg-gray-100 py-0.5 pl-3 pr-1 text-gray-700 hover:bg-gray-200 transition-colors"
                     >
-                        <span className="text-[12px] font-medium leading-tight text-right">
-                            Start Selling to Thousands of<br className="hidden xl:block" /> Buyers on Maxtop Mart
+                        <span className="text-[11.5px] font-medium leading-tight text-right text-gray-700">
+                            Start Selling on Maxtop Mart
                         </span>
-                        <span className="rounded-full bg-[#fb7701] px-3.5 py-1.5 text-[12.5px] font-bold text-white transition-colors hover:bg-[#e56a00]">
+                        <span className="rounded-full bg-[#fb7701] px-3 py-1 text-[11.5px] font-bold text-white transition-colors hover:bg-[#e56a00]">
                             Join Now
                         </span>
                     </Link>
                 </div>
             </div>
 
-            {/* ───────── Main nav (purple) ───────── */}
-            <div className="text-white">
+            {/* ───────── Main nav (clean white) ───────── */}
+            <div className="bg-white text-gray-800">
 
                 {/* ========== MOBILE (<lg) ========== */}
                 <div className="lg:hidden">
@@ -345,7 +345,7 @@ const HeaderInner: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => setMobileOpen(true)}
-                                className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg text-white transition-colors hover:bg-white/10 active:bg-white/20"
+                                className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg text-gray-800 transition-colors hover:bg-gray-100 active:bg-gray-200"
                                 aria-label="Open sidebar menu"
                             >
                                 <LuMenu size={23} strokeWidth={2} />
@@ -357,7 +357,7 @@ const HeaderInner: React.FC = () => {
                                 aria-label="Home"
                                 onClick={() => setSearchQuery('')}
                             >
-                                <Logo light size={24} imgClassName="h-[36px]" />
+                                <Logo size={24} imgClassName="h-[36px]" />
                             </Link>
                         </div>
 
@@ -365,7 +365,7 @@ const HeaderInner: React.FC = () => {
                         <div className="flex items-center gap-1.5 shrink-0">
                             <Link
                                 href={isAuthenticated ? dashboardHref : '/login'}
-                                className="flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10"
+                                className="flex h-9 w-9 items-center justify-center rounded-full text-gray-800 transition-colors hover:bg-gray-100"
                                 aria-label="Account"
                             >
                                 <LuUser size={21} strokeWidth={1.9} />
@@ -373,7 +373,7 @@ const HeaderInner: React.FC = () => {
 
                             <Link
                                 href="/cart"
-                                className="relative flex h-9 w-9 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10"
+                                className="relative flex h-9 w-9 items-center justify-center rounded-full text-gray-800 transition-colors hover:bg-gray-100"
                                 aria-label={`Cart, ${cartCount} items`}
                             >
                                 <LuShoppingCart size={21} strokeWidth={1.9} />
@@ -400,18 +400,18 @@ const HeaderInner: React.FC = () => {
                     <div className="container mx-auto px-4 flex h-[64px] items-center gap-6">
                         {/* Logo */}
                         <Link href="/" className="shrink-0 flex items-center mr-2" aria-label="Home" onClick={() => setSearchQuery('')}>
-                            <Logo light imgClassName="h-[48px]" />
+                            <Logo imgClassName="h-[46px]" />
                         </Link>
 
                         {/* Left nav links */}
                         <nav className="flex items-center gap-5 xl:gap-6 shrink-0" aria-label="Primary">
-                            <Link href={TOP_SELLING_HREF} className={`${navLink} ${isActive(TOP_SELLING_HREF) ? '!text-white font-semibold' : ''}`}>
+                            <Link href={TOP_SELLING_HREF} className={`${navLink} ${isActive(TOP_SELLING_HREF) ? '!text-[#fb7701] font-bold' : ''}`}>
                                 <LuCrown size={18} strokeWidth={1.9} className="text-[#fb7701]" /> Best-Selling Items
                             </Link>
-                            <Link href={FIVE_STAR_HREF} className={`${navLink} ${isActive(FIVE_STAR_HREF) ? '!text-white font-semibold' : ''}`}>
+                            <Link href={FIVE_STAR_HREF} className={`${navLink} ${isActive(FIVE_STAR_HREF) ? '!text-[#fb7701] font-bold' : ''}`}>
                                 <LuStar size={18} strokeWidth={1.9} className="text-[#fb7701]" /> 5-Star Rated
                             </Link>
-                            <Link href={NEW_IN_HREF} className={`${navLink} ${isActive(NEW_IN_HREF) ? '!text-white font-semibold' : ''}`}>
+                            <Link href={NEW_IN_HREF} className={`${navLink} ${isActive(NEW_IN_HREF) ? '!text-[#fb7701] font-bold' : ''}`}>
                                 New In
                             </Link>
 
@@ -462,22 +462,22 @@ const HeaderInner: React.FC = () => {
                                     <button
                                         type="button"
                                         onClick={() => setProfileOpen((o) => !o)}
-                                        className="flex items-center gap-2 text-left transition-colors hover:text-white text-white/90"
+                                        className="flex items-center gap-2 text-left transition-colors hover:text-[#fb7701] text-gray-800"
                                         aria-haspopup="menu"
                                         aria-expanded={profileOpen}
                                     >
                                         {user.avatar
-                                            ? <SmartImage src={user.avatar} alt="" width={26} height={26} className="h-[26px] w-[26px] rounded-full object-cover border border-white/30" />
+                                            ? <SmartImage src={user.avatar} alt="" width={26} height={26} className="h-[26px] w-[26px] rounded-full object-cover border border-gray-300" />
                                             : <LuUser size={22} strokeWidth={1.9} />}
                                         <span className="leading-tight">
                                             <span className="block text-[13px] font-semibold">{user.name?.split(' ')[0] || 'Account'}</span>
-                                            <span className="block text-[11px] text-white/60">Orders & Account</span>
+                                            <span className="block text-[11px] text-gray-400">Orders & Account</span>
                                         </span>
                                         <LuChevronDown size={14} className={`transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
                                     </button>
                                     {profileOpen && (
-                                        <div className="absolute right-0 top-full z-[70] mt-3 w-60 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-2xl shadow-black/25">
-                                            <div className="border-b border-gray-100 bg-purple-50 px-4 py-3.5">
+                                        <div className="absolute right-0 top-full z-[70] mt-3 w-60 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-2xl shadow-black/15">
+                                            <div className="border-b border-gray-100 bg-gray-50 px-4 py-3.5">
                                                 <p className="truncate text-sm font-bold text-gray-800">{user.name || 'User'}</p>
                                                 <p className="mt-0.5 truncate text-xs text-gray-500">{user.email}</p>
                                             </div>
@@ -499,27 +499,27 @@ const HeaderInner: React.FC = () => {
                                     )}
                                 </div>
                             ) : (
-                                <Link href="/login" className="flex items-center gap-2 text-white/90 transition-colors hover:text-white">
+                                <Link href="/login" className="flex items-center gap-2 text-gray-800 transition-colors hover:text-[#fb7701]">
                                     <LuUser size={22} strokeWidth={1.9} />
                                     <span className="leading-tight">
                                         <span className="block text-[13px] font-semibold">Sign in / Register</span>
-                                        <span className="block text-[11px] text-white/60">Orders & Account</span>
+                                        <span className="block text-[11px] text-gray-400">Orders & Account</span>
                                     </span>
                                 </Link>
                             )}
 
                             {/* Support */}
-                            <a href={supportHref} className="flex items-center gap-1.5 text-[13px] font-medium text-white/90 transition-colors hover:text-white">
+                            <a href={supportHref} className="flex items-center gap-1.5 text-[13px] font-medium text-gray-700 transition-colors hover:text-[#fb7701]">
                                 <LuHeadphones size={20} strokeWidth={1.9} /> Support
                             </a>
 
                             {/* Language */}
-                            <button type="button" className="flex items-center gap-1.5 text-[13px] font-medium text-white/90 transition-colors hover:text-white">
+                            <button type="button" className="flex items-center gap-1.5 text-[13px] font-medium text-gray-700 transition-colors hover:text-[#fb7701]">
                                 <LuGlobe size={20} strokeWidth={1.9} /> English
                             </button>
 
                             {/* Cart */}
-                            <Link href="/cart" className="relative flex items-center justify-center h-10 w-10 rounded-full text-white transition-colors hover:bg-white/10" aria-label={`Cart, ${cartCount} items`}>
+                            <Link href="/cart" className="relative flex items-center justify-center h-10 w-10 rounded-full text-gray-800 transition-colors hover:bg-gray-100" aria-label={`Cart, ${cartCount} items`}>
                                 <LuShoppingCart size={24} strokeWidth={1.9} />
                                 <CountBadge count={cartCount} />
                             </Link>

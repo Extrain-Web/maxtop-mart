@@ -109,15 +109,15 @@ export default function LazadaHeroBanner() {
     };
 
     return (
-        <section className="w-full bg-[#f5f5f5] py-3 sm:py-4">
-            <div className="container mx-auto px-2 sm:px-4 max-w-[1360px]">
+        <section className="w-full bg-[#f5f5f5] pt-0 pb-3 sm:pb-5">
+            <div className="container mx-auto px-0 sm:px-4 max-w-[1360px]">
 
                 {/* ════════════ TOP SECTION: BIG BANNER (LEFT) + APP DOWNLOAD CARD (RIGHT) ════════════ */}
-                <div className="flex flex-col lg:flex-row items-stretch gap-3 sm:gap-4">
+                <div className="flex flex-col lg:flex-row items-stretch gap-0 sm:gap-4">
 
                     {/* ── Left Big Banner Slider ── */}
                     <div
-                        className="relative flex-1 w-full overflow-hidden rounded-xl sm:rounded-2xl shadow-sm bg-gray-200 group"
+                        className="relative flex-1 w-full overflow-hidden rounded-none sm:rounded-2xl shadow-sm bg-gray-200 group"
                         onMouseEnter={() => setIsPaused(true)}
                         onMouseLeave={() => setIsPaused(false)}
                         onTouchStart={handleTouchStart}
@@ -299,7 +299,7 @@ export default function LazadaHeroBanner() {
                 </div>
 
                 {/* ── Mobile Compact Promo Banner (Mobile only: < lg) ── */}
-                <div className="lg:hidden mt-2.5">
+                <div className="lg:hidden mt-2.5 px-2 sm:px-0">
                     <div className="relative overflow-hidden rounded-xl p-2.5 bg-gradient-to-r from-[#ff6b00] via-[#ff2a6d] to-[#d80075] text-white shadow-sm flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5 min-w-0">
                             <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
@@ -322,7 +322,8 @@ export default function LazadaHeroBanner() {
                 </div>
 
                 {/* ════════════ BOTTOM SECTION: 4 LAZADA FEATURE CARDS ════════════ */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mt-3 sm:mt-4">
+                <div className="px-2 sm:px-0">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mt-3 sm:mt-4">
                     {FEATURE_CARDS.map((card) => (
                         <Link
                             key={card.id}
@@ -377,6 +378,7 @@ export default function LazadaHeroBanner() {
                             </div>
                         </Link>
                     ))}
+                    </div>
                 </div>
 
             </div>

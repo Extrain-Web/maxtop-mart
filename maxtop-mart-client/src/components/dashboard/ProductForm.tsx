@@ -87,7 +87,7 @@ const ProductFormInner = ({ productId: propProductId }: { productId?: string }) 
         stock: '', lowStockThreshold: '', unit: 'piece',
         // Status
         status: 'active', visibility: 'visible',
-        isFeatured: false, isNewProduct: true, isOnSale: false,
+        isFeatured: false, isNewProduct: false, isOnSale: false,
         // Visual variants
         colors: [], colorHex: [], sizes: [], material: [],
         variants: [],
@@ -1141,13 +1141,8 @@ const ProductFormInner = ({ productId: propProductId }: { productId?: string }) 
 
                     {/* ── Visibility & Promotion ────────────────────── */}
                     <div className="bg-white p-6 rounded-md border border-gray-200 shadow-sm space-y-4">
-                        <h3 className="font-bold text-gray-800 flex items-center gap-2"><LuSettings className="text-orange-500" /> Visibility & Status</h3>
-                        <div className="space-y-2">
-                            <Toggle label="Featured Product" name="isFeatured" checked={formData.isFeatured} onChange={handleChange} color="bg-yellow-500" />
-                            <Toggle label="On Sale" name="isOnSale" checked={formData.isOnSale} onChange={handleChange} color="bg-rose-500" />
-                            <Toggle label="New Arrival" name="isNewProduct" checked={formData.isNewProduct} onChange={handleChange} color="bg-emerald-500" />
-                        </div>
-                        <div className="pt-2">
+                        <h3 className="font-bold text-gray-800 flex items-center gap-2"><LuSettings className="text-orange-500" /> Status</h3>
+                        <div>
                             <label className="text-xs font-bold text-gray-400 uppercase block mb-2">Status</label>
                             <div className="grid grid-cols-3 gap-1.5">
                                 {['active', 'draft', 'out-of-stock'].map(s => (

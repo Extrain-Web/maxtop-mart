@@ -95,7 +95,7 @@ orderSchema.pre('save', async function (next) {
             for (let i = 0; i < 4; i++) {
                 randomChars += chars.charAt(Math.floor(Math.random() * chars.length));
             }
-            const generatedId = `FM-${randomNum}-${randomChars}`;
+            const generatedId = `MM-${randomNum}-${randomChars}`;
             
             const existing = await (this.constructor as any).findOne({ orderId: generatedId });
             if (!existing) {

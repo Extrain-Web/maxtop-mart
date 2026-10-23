@@ -176,9 +176,15 @@ productSchema.pre('save', function (next) {
         this.slug = this.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Date.now();
     }
 
-    // Auto SKU
+    // Auto SKU — Maxtop Mart product code: MM-######-XXXX
     if (!this.sku) {
-        this.sku = 'SKU-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+        const randomNum = Math.floor(100000 + Math.random() * 900000); // 6-digit
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        let randomChars = '';
+        for (let i = 0; i < 4; i++) {
+            randomChars += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        this.sku = `MM-${randomNum}-${randomChars}`;
     }
 
     // Auto-calculate base product discount %

@@ -10,19 +10,19 @@ import {
 const BIG_BANNERS = [
     {
         id: 1,
-        url: 'https://img.lazcdn.com/us/domino/0a726355-b0ed-468d-98c3-52fec47921f6_MY-1976-688.jpg_2200x2200q80.jpg_.webp',
+        url: '/images/banner-05.png',
         alt: 'Oh Murah Giler Deals',
         href: '/products?sort=-totalSold',
     },
     {
         id: 2,
-        url: 'https://img.lazcdn.com/g/tps/imgextra/i3/O1CN0132XgJKdAb6B40k80_!!6000000004832-0-tps-1976-688.jpg_2200x2200q80.jpg_.webp',
+        url: '/images/banner-06.png',
         alt: 'Super Mega Brand Deals',
         href: '/products',
     },
     {
         id: 3,
-        url: 'https://img.lazcdn.com/g/tps/imgextra/i4/O1CN01xRuJdkWU0MH40k80_!!6000000001554-0-tps-1976-688.jpg_2200x2200q80.jpg_.webp',
+        url: '/images/banner-04.png',
         alt: 'Exclusive Online Discounts',
         href: '/products?sort=-createdAt',
     },
@@ -31,8 +31,8 @@ const BIG_BANNERS = [
 const FEATURE_CARDS = [
     {
         id: 'lazmall',
-        title: 'LazMall',
-        titlePrefix: 'LM',
+        title: 'Maxtop Mart',
+        titlePrefix: 'Mx',
         subtitle: '100% Authentic Brands',
         image: 'https://img.lazcdn.com/us/domino/f948d33a-7b9f-450c-9880-da8bf1dc9bf7_MY-276-260.png_300x300q80.png_.webp',
         href: '/products?brand=authentic',
@@ -109,7 +109,7 @@ export default function LazadaHeroBanner() {
     };
 
     return (
-        <section className="w-full bg-[#f5f5f5] pt-0 pb-3 sm:pb-5">
+        <section className="w-full bg-[#f5f5f5] pt-6 pb-3 sm:pb-5">
             <div className="container mx-auto px-0 sm:px-4 max-w-[1360px]">
 
                 {/* ════════════ TOP SECTION: BIG BANNER (LEFT) + APP DOWNLOAD CARD (RIGHT) ════════════ */}
@@ -190,7 +190,7 @@ export default function LazadaHeroBanner() {
                                 Laz
                             </div>
                             <span className="text-[12px] font-extrabold uppercase tracking-wide text-gray-800">
-                                TRY LAZADA APP
+                                TRY Maxtop Mart APP
                             </span>
                         </div>
 
@@ -206,7 +206,7 @@ export default function LazadaHeroBanner() {
                                 </div>
 
                                 <h4 className="text-[13px] font-extrabold leading-tight mt-1.5 text-white drop-shadow-xs">
-                                    Get the Lazada App to Enjoy
+                                    Get the Maxtop Mart to Enjoy
                                 </h4>
                             </div>
 
@@ -306,7 +306,7 @@ export default function LazadaHeroBanner() {
                                 <LuSmartphone size={18} className="text-white" />
                             </div>
                             <div className="min-w-0 leading-tight">
-                                <p className="text-xs font-black truncate">Get the Lazada App</p>
+                                <p className="text-xs font-black truncate">Get the Maxtop Mart App</p>
                                 <p className="text-[10.5px] text-white/90 truncate flex items-center gap-1.5 mt-0.5">
                                     <span>Free Shipping</span> • <span>Exclusive Vouchers</span>
                                 </p>
@@ -332,10 +332,10 @@ export default function LazadaHeroBanner() {
                         >
                             {/* Left Text */}
                             <div className="min-w-0 flex-1">
-                                {card.id === 'lazmall' ? (
+                                {card.id === 'Maxtop Mart' ? (
                                     <div className="flex items-center gap-1">
                                         <span className="text-[#e00034] font-black text-sm sm:text-[17px] tracking-tight">
-                                            LM
+                                            Maxtop
                                         </span>
                                         <span className="font-extrabold text-[13.5px] sm:text-[16px] text-gray-900 group-hover:text-[#e00034] transition-colors truncate">
                                             {card.title}
@@ -352,7 +352,7 @@ export default function LazadaHeroBanner() {
                                     <div className="flex items-center gap-1.5">
                                         <span className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-gradient-to-tr from-purple-600 via-pink-500 to-rose-500 inline-block shrink-0 shadow-2xs" />
                                         <span className="font-extrabold text-[13.5px] sm:text-[16px] text-gray-900 group-hover:text-purple-600 transition-colors truncate">
-                                            Lazada <span className="text-[#e00077]">Blog</span>
+                                            Maxtop Mart <span className="text-[#e00077]">Blog</span>
                                         </span>
                                     </div>
                                 ) : (

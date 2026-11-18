@@ -4,57 +4,38 @@
     {
       "name": "server",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "--prefix",
-        "E:/Work/new-mart/maxtop-mart-server",
-        "run",
-        "start:dev"
-      ],
+      "runtimeArgs": ["--prefix", "maxtop-mart-server", "run", "start:dev"],
       "port": 5000
     },
     {
       "name": "client",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "--prefix",
-        "E:/Work/new-mart/maxtop-mart-client",
-        "run",
-        "dev"
-      ],
+      "runtimeArgs": ["--prefix", "maxtop-mart-client", "run", "dev"],
       "port": 3000
     },
     {
-      "name": "server-alt",
-      "runtimeExecutable": "node",
-      "runtimeArgs": [
-        "E:/Work/new-mart/.claude/with-env.cjs",
-        "PORT=5050",
-        "--",
-        "npm",
-        "--prefix",
-        "E:/Work/new-mart/maxtop-mart-server",
-        "run",
-        "start:dev"
-      ],
-      "port": 5050
+      "name": "server-hrtest",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "maxtop-mart-server", "run", "start:dev"],
+      "port": 5055
     },
     {
-      "name": "client-alt",
+      "name": "client-hrtest",
       "runtimeExecutable": "node",
       "runtimeArgs": [
-        "E:/Work/new-mart/.claude/with-env.cjs",
-        "NEXT_PUBLIC_API_URL=http://localhost:5050/api",
+        ".claude/with-env.cjs",
+        "NEXT_PUBLIC_API_URL=http://localhost:5055/api",
         "--",
         "npm",
         "--prefix",
-        "E:/Work/new-mart/maxtop-mart-client",
+        "maxtop-mart-client",
         "run",
         "dev",
         "--",
         "--port",
-        "3002"
+        "3010"
       ],
-      "port": 3002
+      "port": 3010
     }
   ]
 }

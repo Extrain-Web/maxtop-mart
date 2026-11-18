@@ -38,6 +38,8 @@ const PERM_DETAILS: Record<string, { label: string; desc: string }> = {
     manage_categories: { label: 'Categories Management', desc: 'Create, edit, organize categories and sub-categories' },
     manage_products: { label: 'Products & Inventory', desc: 'Add new products, edit catalog, update stock and variants' },
     manage_expenses: { label: 'Expenses & Staff Salary', desc: 'Staff monthly salary payouts, marketing costs, expense tracking' },
+    manage_hr: { label: 'HR — People & Attendance', desc: 'Employees, departments, attendance, leave approvals and holidays' },
+    manage_payroll: { label: 'HR — Payroll & Salary', desc: 'Generate salary sheets, pay salaries and download payslips' },
     manage_coupons: { label: 'Discount Coupons', desc: 'Create promotional voucher codes and rules' },
     manage_offers: { label: 'Offers & Flash Sales', desc: 'Manage flash sale banners and seasonal discount campaigns' },
     manage_reviews: { label: 'Customer Reviews', desc: 'Moderate, approve, or hide customer product reviews' },

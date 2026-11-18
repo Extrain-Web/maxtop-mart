@@ -10,6 +10,7 @@ import {
     LuLayoutDashboard, LuChartColumn, LuTruck, LuTag, LuStar, LuMapPin, LuSparkles,
     LuSettings, LuBell, LuSearch, LuCreditCard, LuZap, LuShield, LuRefreshCw, LuMail, LuList, LuCirclePlus,
     LuWallet, LuBanknote, LuMegaphone,
+    LuUsersRound, LuIdCard, LuCalendarCheck, LuPlane, LuBuilding2, LuCalendarCog,
 } from 'react-icons/lu';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import Logo from '@/components/shared/Logo';
@@ -29,7 +30,7 @@ interface MenuItem {
     href: string;
     icon: any;
     submenu?: SubMenuItem[] | null;
-    permission?: string;
+    permission?: string | string[];
     superadminOnly?: boolean;
 }
 
@@ -98,6 +99,19 @@ const menuSections: MenuSection[] = [
             { name: 'Newsletter', href: '/dashboard/admin/newsletter', icon: LuMail, submenu: null, permission: 'manage_newsletter' },
         ],
     },
+    // Human resources
+    {
+        label: 'People & HR',
+        items: [
+            { name: 'HR Overview', href: '/dashboard/admin/hr', icon: LuUsersRound, submenu: null, permission: ['manage_hr', 'manage_payroll'] },
+            { name: 'Employees', href: '/dashboard/admin/hr/employees', icon: LuIdCard, submenu: null, permission: ['manage_hr', 'manage_payroll'] },
+            { name: 'Attendance', href: '/dashboard/admin/hr/attendance', icon: LuCalendarCheck, submenu: null, permission: 'manage_hr' },
+            { name: 'Leave', href: '/dashboard/admin/hr/leaves', icon: LuPlane, submenu: null, permission: 'manage_hr' },
+            { name: 'Payroll', href: '/dashboard/admin/hr/payroll', icon: LuBanknote, submenu: null, permission: 'manage_payroll' },
+            { name: 'Departments', href: '/dashboard/admin/hr/departments', icon: LuBuilding2, submenu: null, permission: 'manage_hr' },
+            { name: 'HR Settings', href: '/dashboard/admin/hr/settings', icon: LuCalendarCog, submenu: null, permission: 'manage_hr' },
+        ],
+    },
     // People & access control
     {
         label: 'Users & Access',
@@ -133,7 +147,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         if (role === 'superadmin') return true;
         if (item.superadminOnly) return false;
         if (!item.permission) return true;
-        return Array.isArray(userPermissions) && userPermissions.includes(item.permission);
+        if (!Array.isArray(userPermissions)) return false;
+        const needed: string[] = Array.isArray(item.permission) ? item.permission : [item.permission];
+        return needed.some((p) => userPermissions.includes(p));
     };
 
     useEffect(() => { setMobileOpen(false); }, [pathname]);
@@ -190,7 +206,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                             const hasSubmenu = !!(item.submenu && item.submenu.length > 0);
                             const isExpanded = expandedMenu === item.name;
                             const parentActive = isParentActive(item);
-                            const exactActive = !hasSubmenu && isActive(item.href);
+                            const exactActive = !hasSubmenu && (isActive(item.href) || (item.href.startsWith('/dashboard/admin/hr/') && pathname.startsWith(item.href + '/')));
                             const highlighted = exactActive || (hasSubmenu && parentActive);
 
                             return (

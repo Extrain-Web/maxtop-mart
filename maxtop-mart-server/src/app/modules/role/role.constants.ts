@@ -10,6 +10,8 @@ export const ALL_PERMISSIONS: string[] = [
     'manage_categories',
     'manage_products',
     'manage_expenses',
+    'manage_hr',
+    'manage_payroll',
     'manage_coupons',
     'manage_offers',
     'manage_reviews',

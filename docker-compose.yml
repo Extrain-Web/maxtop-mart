@@ -41,6 +41,13 @@ services:
       JWT_ACCESS_EXPIRES_IN: '1d'
       JWT_REFRESH_EXPIRES_IN: '7d'
       BCRYPT_SALT_ROUNDS: '12'
+      # Optional one-time Super Admin bootstrap. Set SUPERADMIN_EMAIL +
+      # SUPERADMIN_PASSWORD in Coolify and redeploy: a superadmin account is
+      # created with that email (an existing account with that email is promoted).
+      # Remove SUPERADMIN_PASSWORD from Coolify after you have signed in.
+      SUPERADMIN_EMAIL: '${SUPERADMIN_EMAIL:-}'
+      SUPERADMIN_PASSWORD: '${SUPERADMIN_PASSWORD:-}'
+      SUPERADMIN_NAME: '${SUPERADMIN_NAME:-Super Admin}'
       # Public URLs (used for CORS, email links, payment callbacks).
       # API_PUBLIC_URL defaults to an auto-resolving sslip.io host that needs
       # no DNS record. Once the api.maxtopmart.com A record exists, set

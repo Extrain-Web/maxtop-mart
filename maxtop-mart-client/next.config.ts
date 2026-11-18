@@ -24,10 +24,6 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "img.lazcdn.com",
-      },
-      {
-        protocol: "https",
         hostname: "images.unsplash.com",
       },
       {

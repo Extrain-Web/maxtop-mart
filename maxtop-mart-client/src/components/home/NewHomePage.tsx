@@ -7,7 +7,7 @@ import NewProductCard from '@/components/shared/NewProductCard';
 import { useGetProductsQuery } from '@/redux/api/productApi';
 import { useGetCategoriesQuery } from '@/redux/api/categoryApi';
 import { LuX, LuSearch } from 'react-icons/lu';
-import LazadaHeroBanner from './LazadaHeroBanner';
+import HomeHeroBanner from './HomeHeroBanner';
 
 import TrustStrip from './TrustStrip';
 import CategoryExpertise from './CategoryExpertise';
@@ -120,7 +120,7 @@ const NewHomePage: React.FC = () => {
     // renders — it no longer blanks the entire page behind the products query.
     return (
         <div className="min-h-screen bg-white">
-            <LazadaHeroBanner />
+            <HomeHeroBanner />
 
             <CategoryExpertise />
 

@@ -1,5 +1,5 @@
 import express from 'express';
-import { authMiddleware, authorizeRoles } from '../../middlewares/auth';
+import { authMiddleware, authorizeRoles, authorizePermission, authorizeAnyPermission } from '../../middlewares/auth';
 import ShippingController from './shipping.controller';
 
 const router = express.Router();
@@ -10,7 +10,7 @@ router.get('/quote', ShippingController.getQuote);
 router.get('/settings', ShippingController.getSettings);
 
 // All shipping routes below require admin auth
-router.use(authMiddleware, authorizeRoles('admin'));
+router.use(authMiddleware, authorizeRoles('admin'), authorizeAnyPermission('manage_shipping', 'manage_courier', 'manage_orders'));
 
 // Settings (admin update)
 router.patch('/settings', ShippingController.updateSettings);

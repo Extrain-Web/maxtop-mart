@@ -2,7 +2,7 @@ import express from 'express';
 import AuthController from './auth.controller';
 import validateRequest from '../../middlewares/validateRequest';
 import { registerValidation, loginValidation, refreshTokenValidation, forgotPasswordValidation, resetPasswordValidation, updatePasswordValidation, verifyEmailValidation, resendVerificationValidation, sendOtpValidation, verifyOtpValidation } from './auth.validation';
-import { authMiddleware, authorizeRoles } from '../../middlewares/auth';
+import { authMiddleware, authorizeRoles, authorizePermission, authorizeAnyPermission, guardStaffTarget } from '../../middlewares/auth';
 
 const router = express.Router();
 
@@ -19,6 +19,6 @@ router.post('/reset-password', validateRequest(resetPasswordValidation), AuthCon
 router.post('/update-password', authMiddleware, validateRequest(updatePasswordValidation), AuthController.updatePassword);
 router.get('/me', authMiddleware, AuthController.getMe);
 router.post('/logout', AuthController.logout);
-router.post('/login-as/:userId', authMiddleware, authorizeRoles('admin', 'superadmin'), AuthController.loginAs);
+router.post('/login-as/:userId', authMiddleware, authorizeRoles('admin', 'superadmin'), authorizePermission('manage_users'), guardStaffTarget('userId'), AuthController.loginAs);
 
 export const AuthRoutes = router;

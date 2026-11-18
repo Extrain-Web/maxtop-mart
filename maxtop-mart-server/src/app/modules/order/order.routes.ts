@@ -1,6 +1,6 @@
 import express from 'express';
 import OrderController from './order.controller';
-import { authMiddleware, authorizeRoles } from '../../middlewares/auth';
+import { authMiddleware, authorizeRoles, authorizePermission, authorizeAnyPermission } from '../../middlewares/auth';
 import validateRequest from '../../middlewares/validateRequest';
 import { createOrderValidation, updateOrderStatusValidation } from './order.validation';
 
@@ -18,17 +18,17 @@ router.post('/', authMiddleware, validateRequest(createOrderValidation), OrderCo
 router.patch('/:id/cancel', authMiddleware, OrderController.cancel);
 
 // ── Admin routes ─────────────────────────────────
-router.get('/admin/all', authMiddleware, authorizeRoles('admin'), OrderController.getAll);
+router.get('/admin/all', authMiddleware, authorizeRoles('admin'), authorizeAnyPermission('manage_orders', 'view_analytics', 'manage_payments', 'manage_courier', 'manage_returns'), OrderController.getAll);
 router.get('/admin/stats', authMiddleware, authorizeRoles('admin'), OrderController.getStats);
 // Returns & Refunds board + CSV/PDF export — keep ABOVE '/admin/:id' so the
 // literal paths aren't swallowed by the :id param.
-router.get('/admin/returns', authMiddleware, authorizeRoles('admin', 'superadmin'), OrderController.getReturns);
-router.get('/admin/returns/export', authMiddleware, authorizeRoles('admin', 'superadmin'), OrderController.exportReturns);
-router.get('/admin/:id', authMiddleware, authorizeRoles('admin'), OrderController.getById);
-router.patch('/admin/:id/status', authMiddleware, authorizeRoles('admin'), validateRequest(updateOrderStatusValidation), OrderController.updateStatus);
-router.patch('/admin/:id/payment', authMiddleware, authorizeRoles('admin'), OrderController.updatePaymentStatus);
-router.patch('/admin/:id/note', authMiddleware, authorizeRoles('admin'), OrderController.addNote);
-router.patch('/admin/:id/tracking', authMiddleware, authorizeRoles('admin'), OrderController.updateOrderTracking);
+router.get('/admin/returns', authMiddleware, authorizeRoles('admin', 'superadmin'), authorizePermission('manage_returns'), OrderController.getReturns);
+router.get('/admin/returns/export', authMiddleware, authorizeRoles('admin', 'superadmin'), authorizePermission('manage_returns'), OrderController.exportReturns);
+router.get('/admin/:id', authMiddleware, authorizeRoles('admin'), authorizeAnyPermission('manage_orders', 'view_analytics', 'manage_payments', 'manage_courier', 'manage_returns'), OrderController.getById);
+router.patch('/admin/:id/status', authMiddleware, authorizeRoles('admin'), authorizeAnyPermission('manage_orders', 'manage_courier'), validateRequest(updateOrderStatusValidation), OrderController.updateStatus);
+router.patch('/admin/:id/payment', authMiddleware, authorizeRoles('admin'), authorizeAnyPermission('manage_orders', 'manage_courier'), OrderController.updatePaymentStatus);
+router.patch('/admin/:id/note', authMiddleware, authorizeRoles('admin'), authorizeAnyPermission('manage_orders', 'manage_courier'), OrderController.addNote);
+router.patch('/admin/:id/tracking', authMiddleware, authorizeRoles('admin'), authorizeAnyPermission('manage_orders', 'manage_courier'), OrderController.updateOrderTracking);
 router.post('/admin/bulk-delete', authMiddleware, authorizeRoles('superadmin'), OrderController.bulkDelete);
 router.delete('/admin/:id', authMiddleware, authorizeRoles('superadmin'), OrderController.delete);
 

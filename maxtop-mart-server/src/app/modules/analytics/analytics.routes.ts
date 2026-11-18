@@ -1,5 +1,5 @@
 import express from 'express';
-import { authMiddleware, authorizeRoles } from '../../middlewares/auth';
+import { authMiddleware, authorizeRoles, authorizePermission, authorizeAnyPermission } from '../../middlewares/auth';
 import AnalyticsController from './analytics.controller';
 
 const router = express.Router();
@@ -16,8 +16,8 @@ router.get('/top-products', AnalyticsController.getTopProducts);
 router.get('/sales-by-category', AnalyticsController.getSalesByCategory);
 
 // ── Admin enhancements ──
-router.get('/low-stock', AnalyticsController.getLowStock);
-router.get('/returns-summary', AnalyticsController.getReturnsSummary);
-router.get('/report/pdf', AnalyticsController.getAdminReportPdf);
+router.get('/low-stock', authorizePermission('view_analytics'), AnalyticsController.getLowStock);
+router.get('/returns-summary', authorizePermission('view_analytics'), AnalyticsController.getReturnsSummary);
+router.get('/report/pdf', authorizePermission('view_analytics'), AnalyticsController.getAdminReportPdf);
 
 export const AnalyticsRoutes = router;

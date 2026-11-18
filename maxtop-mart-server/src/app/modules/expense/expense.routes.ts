@@ -1,13 +1,13 @@
 import express from 'express';
 import ExpenseController from './expense.controller';
-import { authMiddleware, authorizeRoles } from '../../middlewares/auth';
+import { authMiddleware, authorizeRoles, authorizePermission, authorizeAnyPermission } from '../../middlewares/auth';
 import validateRequest from '../../middlewares/validateRequest';
 import { createExpenseValidation, updateExpenseValidation } from './expense.validation';
 
 const router = express.Router();
 
 // All expense routes require admin or superadmin authentication
-router.use(authMiddleware, authorizeRoles('admin', 'superadmin'));
+router.use(authMiddleware, authorizeRoles('admin', 'superadmin'), authorizePermission('manage_expenses'));
 
 router.get('/summary', ExpenseController.getSummary);
 router.get('/', ExpenseController.getExpenses);

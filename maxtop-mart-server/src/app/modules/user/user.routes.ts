@@ -1,6 +1,6 @@
 import express from 'express';
 import UserController from './user.controller';
-import { authMiddleware, authorizeRoles } from '../../middlewares/auth';
+import { authMiddleware, authorizeRoles, authorizePermission, authorizeAnyPermission, guardStaffTarget } from '../../middlewares/auth';
 import validateRequest from '../../middlewares/validateRequest';
 import { updateUserValidation, addAddressValidation, updateAddressValidation, updateStatusValidation } from './user.validation';
 
@@ -26,11 +26,11 @@ router.post('/wishlist/merge', authMiddleware, UserController.mergeWishlist);
 router.post('/wishlist/:productId', authMiddleware, UserController.toggleWishlist);
 
 // ── Admin Routes ────────────────────────────────────────
-router.get('/admin/all', authMiddleware, authorizeRoles('admin'), UserController.getAllUsers);
-router.get('/admin/stats', authMiddleware, authorizeRoles('admin'), UserController.getAdminStats);
-router.get('/admin/:id', authMiddleware, authorizeRoles('admin'), UserController.getUserById);
-router.patch('/admin/:id', authMiddleware, authorizeRoles('admin'), UserController.adminUpdateUser);
-router.patch('/admin/:id/status', authMiddleware, authorizeRoles('admin'), validateRequest(updateStatusValidation), UserController.updateUserStatus);
-router.delete('/admin/:id', authMiddleware, authorizeRoles('admin'), UserController.deleteUser);
+router.get('/admin/all', authMiddleware, authorizeRoles('admin'), authorizePermission('manage_users'), UserController.getAllUsers);
+router.get('/admin/stats', authMiddleware, authorizeRoles('admin'), authorizePermission('manage_users'), UserController.getAdminStats);
+router.get('/admin/:id', authMiddleware, authorizeRoles('admin'), authorizePermission('manage_users'), UserController.getUserById);
+router.patch('/admin/:id', authMiddleware, authorizeRoles('admin'), authorizePermission('manage_users'), guardStaffTarget('id'), UserController.adminUpdateUser);
+router.patch('/admin/:id/status', authMiddleware, authorizeRoles('admin'), authorizePermission('manage_users'), guardStaffTarget('id'), validateRequest(updateStatusValidation), UserController.updateUserStatus);
+router.delete('/admin/:id', authMiddleware, authorizeRoles('admin'), authorizePermission('manage_users'), guardStaffTarget('id'), UserController.deleteUser);
 
 export const UserRoutes = router;

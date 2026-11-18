@@ -2,188 +2,7 @@ import { Expense } from './expense.model';
 import { IExpense } from './expense.interface';
 import AppError from '../../utils/AppError';
 
-const DUMMY_EXPENSES: Partial<IExpense>[] = [
-    // Staff Salaries - Recent Months
-    {
-        type: 'staff',
-        title: 'Salary - Tanvir Ahmed (October 2026)',
-        staffName: 'Tanvir Ahmed',
-        staffRole: 'Store Operations Manager',
-        amount: 32000,
-        month: 'October 2026',
-        category: 'Monthly Salary',
-        date: new Date('2026-10-05'),
-        paymentMethod: 'Bank Transfer',
-        status: 'paid',
-        referenceNo: 'TXN-SLR-1001',
-        notes: 'Full month salary for October',
-    },
-    {
-        type: 'staff',
-        title: 'Salary - Nusrat Jahan (October 2026)',
-        staffName: 'Nusrat Jahan',
-        staffRole: 'Digital Marketing Lead',
-        amount: 35000,
-        month: 'October 2026',
-        category: 'Monthly Salary',
-        date: new Date('2026-10-05'),
-        paymentMethod: 'Bank Transfer',
-        status: 'paid',
-        referenceNo: 'TXN-SLR-1002',
-        notes: 'October salary including performance bonus',
-    },
-    {
-        type: 'staff',
-        title: 'Salary - Rafiqul Islam (October 2026)',
-        staffName: 'Rafiqul Islam',
-        staffRole: 'Warehouse & Fulfillment Lead',
-        amount: 22000,
-        month: 'October 2026',
-        category: 'Monthly Salary',
-        date: new Date('2026-10-05'),
-        paymentMethod: 'bKash',
-        status: 'paid',
-        referenceNo: 'BK-SLR-9921',
-        notes: 'October delivery and packing supervisor pay',
-    },
-    {
-        type: 'staff',
-        title: 'Salary - Sabrina Akter (October 2026)',
-        staffName: 'Sabrina Akter',
-        staffRole: 'Customer Support Executive',
-        amount: 18000,
-        month: 'October 2026',
-        category: 'Monthly Salary',
-        date: new Date('2026-10-06'),
-        paymentMethod: 'bKash',
-        status: 'paid',
-        referenceNo: 'BK-SLR-9925',
-        notes: 'Shift customer handling and live chat support',
-    },
-    {
-        type: 'staff',
-        title: 'Salary - Tanvir Ahmed (September 2026)',
-        staffName: 'Tanvir Ahmed',
-        staffRole: 'Store Operations Manager',
-        amount: 32000,
-        month: 'September 2026',
-        category: 'Monthly Salary',
-        date: new Date('2026-09-05'),
-        paymentMethod: 'Bank Transfer',
-        status: 'paid',
-        referenceNo: 'TXN-SLR-0901',
-        notes: 'September salary',
-    },
-    {
-        type: 'staff',
-        title: 'Salary - Nusrat Jahan (September 2026)',
-        staffName: 'Nusrat Jahan',
-        staffRole: 'Digital Marketing Lead',
-        amount: 35000,
-        month: 'September 2026',
-        category: 'Monthly Salary',
-        date: new Date('2026-09-05'),
-        paymentMethod: 'Bank Transfer',
-        status: 'paid',
-        referenceNo: 'TXN-SLR-0902',
-        notes: 'September salary',
-    },
-    {
-        type: 'staff',
-        title: 'Salary - Rafiqul Islam (September 2026)',
-        staffName: 'Rafiqul Islam',
-        staffRole: 'Warehouse & Fulfillment Lead',
-        amount: 22000,
-        month: 'September 2026',
-        category: 'Monthly Salary',
-        date: new Date('2026-09-05'),
-        paymentMethod: 'bKash',
-        status: 'paid',
-        referenceNo: 'BK-SLR-0921',
-        notes: 'September salary',
-    },
-
-    // Marketing Expenses
-    {
-        type: 'marketing',
-        title: 'Facebook Ads - Autumn Festival Boost',
-        campaignName: 'Autumn Festival Special Promotion',
-        channel: 'Facebook Ads',
-        amount: 14500,
-        month: 'October 2026',
-        category: 'Social Media Ads',
-        date: new Date('2026-10-10'),
-        paymentMethod: 'Card',
-        status: 'paid',
-        referenceNo: 'FB-AD-77341',
-        notes: 'Targeting Dhaka, Chittagong, Sylhet top buyer demographic',
-    },
-    {
-        type: 'marketing',
-        title: 'Google Shopping & Search Ads',
-        campaignName: 'Product Search & Re-targeting Q4',
-        channel: 'Google Ads',
-        amount: 9800,
-        month: 'October 2026',
-        category: 'PPC & Search',
-        date: new Date('2026-10-14'),
-        paymentMethod: 'Card',
-        status: 'paid',
-        referenceNo: 'GG-AD-4412',
-        notes: 'Keyword targeting on gadgets, clothing, lifestyle accessories',
-    },
-    {
-        type: 'marketing',
-        title: 'TikTok Influencer Unboxing Campaign',
-        campaignName: 'Lifestyle Creators Collab',
-        channel: 'Influencer',
-        amount: 15000,
-        month: 'October 2026',
-        category: 'Influencer Marketing',
-        date: new Date('2026-10-16'),
-        paymentMethod: 'Bank Transfer',
-        status: 'paid',
-        referenceNo: 'INF-TT-8802',
-        notes: 'Paid collaboration with 2 fashion micro-influencers',
-    },
-    {
-        type: 'marketing',
-        title: 'Bulk SMS Campaign for Flash Sale',
-        campaignName: 'Weekend Flash Offer Notification',
-        channel: 'SMS Gateway',
-        amount: 3200,
-        month: 'September 2026',
-        category: 'SMS & Email',
-        date: new Date('2026-09-22'),
-        paymentMethod: 'bKash',
-        status: 'paid',
-        referenceNo: 'SMS-GTW-192',
-        notes: 'Broadcasted to 15,000 active registered customers',
-    },
-    {
-        type: 'marketing',
-        title: 'Facebook Retargeting Ads (September)',
-        campaignName: 'Cart Abandonment Retargeting',
-        channel: 'Facebook Ads',
-        amount: 8500,
-        month: 'September 2026',
-        category: 'Social Media Ads',
-        date: new Date('2026-09-28'),
-        paymentMethod: 'Card',
-        status: 'paid',
-        referenceNo: 'FB-AD-66219',
-        notes: 'Retargeting customers who visited product pages',
-    },
-];
-
 const ExpenseService = {
-    async ensureSeeded() {
-        const count = await Expense.countDocuments();
-        if (count === 0) {
-            await Expense.insertMany(DUMMY_EXPENSES);
-        }
-    },
-
     async createExpense(payload: Partial<IExpense>, userId?: string) {
         if (userId) {
             payload.createdBy = userId as any;
@@ -192,8 +11,6 @@ const ExpenseService = {
     },
 
     async getExpenses(query: Record<string, any>) {
-        await this.ensureSeeded();
-
         const filter: Record<string, any> = {};
 
         if (query.type && query.type !== 'all') {
@@ -247,8 +64,6 @@ const ExpenseService = {
     },
 
     async getSummary() {
-        await this.ensureSeeded();
-
         const [totals, byType, distinctMonths, distinctStaff] = await Promise.all([
             Expense.aggregate([
                 {

@@ -66,7 +66,7 @@ export const authorizeRoles = (...allowedRoles: ('superadmin' | 'admin' | 'user'
  * or an admin who holds EVERY listed permission.
  * Permissions are not in the JWT, so the user is fetched from the DB.
  */
-export const authorizePermission = (...requiredPerms: string[]) => {
+const checkPermissions = (mode: 'all' | 'any', requiredPerms: string[]) => {
     return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             if (!req.user) throw new AppError(401, 'You are not logged in. Please login to continue.');
@@ -77,10 +77,42 @@ export const authorizePermission = (...requiredPerms: string[]) => {
             const user = await User.findById(req.user.userId);
             if (!user) throw new AppError(401, 'User belonging to this token no longer exists.');
 
+            // Use the role stored in the DB, not the (possibly stale) one in the JWT.
             const userPerms = user.permissions || [];
-            const hasAll = req.user.role === 'admin' && requiredPerms.every((p) => userPerms.includes(p));
-            if (!hasAll) {
+            const has = (p: string) => userPerms.includes(p);
+            const ok =
+                user.role === 'superadmin' ||
+                (user.role === 'admin' && (mode === 'all' ? requiredPerms.every(has) : requiredPerms.some(has)));
+            if (!ok) {
                 throw new AppError(403, 'You do not have permission to perform this action.');
+            }
+            next();
+        } catch (error) {
+            next(error);
+        }
+    };
+};
+
+/** Admin must hold EVERY listed permission (superadmin always passes). */
+export const authorizePermission = (...requiredPerms: string[]) => checkPermissions('all', requiredPerms);
+
+/** Admin must hold AT LEAST ONE of the listed permissions (superadmin always passes). */
+export const authorizeAnyPermission = (...requiredPerms: string[]) => checkPermissions('any', requiredPerms);
+
+/**
+ * Only a superadmin may act on another staff account (admin / superadmin).
+ * Regular admins can manage customer accounts only — this stops an admin from
+ * impersonating, blocking, deleting or editing a superadmin or fellow admin.
+ */
+export const guardStaffTarget = (paramName = 'id') => {
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            if (!req.user) throw new AppError(401, 'You are not logged in. Please login to continue.');
+            if (req.user.role === 'superadmin') return next();
+
+            const target = await User.findById(req.params[paramName]).select('role');
+            if (target && target.role !== 'user') {
+                throw new AppError(403, 'Only a Super Admin can manage staff accounts.');
             }
             next();
         } catch (error) {
